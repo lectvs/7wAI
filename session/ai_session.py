@@ -52,6 +52,11 @@ class AiSession:
             return self.ai.get_selection(self.ai_game, hand)
 
         if self.game_state == PLAY_DISCARD:
+            hand = read_hand(self.driver, self.game_info)
+            old_age = self.game_info.age
+            set_age(self.driver, self.game_info, wonders)
+            if not self.ai_game.initialized or self.game_info.age != old_age:
+                self.ai_game.initialize(self.game_info.age, wonders, hand)
             discard = read_discard(self.driver, self.game_info)
 
             card = self.ai.get_build_card_from_discard(self.ai_game, [info.card for info in discard])

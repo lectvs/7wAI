@@ -314,7 +314,7 @@ def get_score_distribution(ai_game, selection):
             'gold_gain': 0.33,
             'gold_after_play': -3,
             'marketplace_greys': 2.5,
-            'tradingpost_browns': 1.25,
+            'tradingpost_browns': 1,
         },
         2: {
             'grey': -3.33,

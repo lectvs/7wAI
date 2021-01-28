@@ -102,7 +102,7 @@ def get_game_state(driver):
     return WAITING
 
 def get_age(driver, game_info, wonders):
-    age_from_game_info = len(driver.execute_script('let args = gameui.gamedatas.gamestate.args; return args ? args.age : ""'))
+    age_from_game_info = len(driver.execute_script('let args = gameui.gamedatas.gamestate.args; return args ? args.age : ""') or "")
     if age_from_game_info > 0:
         return age_from_game_info
     if wonders:

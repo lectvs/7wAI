@@ -1,6 +1,7 @@
 import traceback
 from concurrent.futures.thread import ThreadPoolExecutor
 
+from users import USERS
 from session.ai_session import AiSession
 from game.ai_game import *
 from ai.random_ai import RandomAi
@@ -11,11 +12,7 @@ from time import sleep
 from random import uniform, choice
 
 
-players = [
-    ('Username1', 'Password1'),
-    ('Username2', 'Password2'),
-    ('Username3', 'Password3'),
-]
+players = USERS
 manual_mode = True
 
 def create_session(player):

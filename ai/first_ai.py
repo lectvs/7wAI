@@ -3,6 +3,11 @@ from game.deck import *
 from game.wonders import *
 from random import choice
 
+# My first (and current) AI.
+# Scores all possible moves with a variety of weighted factors and picks the best one.
+
+### SCORING METHODS ###
+
 def get_effects_from_selection(ai_game, selection):
     if selection.action == 'play':
         return selection.card.effects
@@ -296,7 +301,12 @@ def score_tradingpost_browns(ai_game, selection):
     score = len([r for r in pr if r not in GREY_RESOURCES]) + 2*len(pmr)
     return score
 
+### AI ###
+
+# Returns a distribution of scores, weighted accordingly.
 def get_score_distribution(ai_game, selection):
+    # Manually defined weights for now :(
+    # I'd love to run some kind of machine learning algorithm in the future to train these.
     weights = {
         1: {
             'multi': 50,
@@ -406,6 +416,7 @@ class FirstAi:
 
         return card
 
+    # Print reasons for choosing each card and pick the best one.
     def choose_pick_scores_reasons(self, ai_game, possible_moves):
         possible_moves_scores = [(move, get_score_distribution(ai_game, move)) for move in possible_moves]
         possible_moves_scores.sort(key=lambda ms: sum(ms[1].values()), reverse=True)

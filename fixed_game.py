@@ -4,7 +4,12 @@ from game.wonders import *
 from ai.random_ai import RandomAi
 from ai.first_ai import FirstAi
 
+# Runs a fixed, predetermined game locally.
 # GAME: https://boardgamearena.com/gamereview?table=135447213
+# Steps:
+# - 1. Replace ai with the AI you want. Keep ai_i = 1
+# - 2. Run `python fixed_game.py`
+# - 3. Press enter to go to the next move.
 
 ai = FirstAi()
 ai_i = 1

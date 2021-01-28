@@ -4,6 +4,7 @@ from game.ai_game import *
 from game.deck import *
 from game.wonders import *
 
+# Helper to print/pause the routine.
 def print_pause(game, pause_each_move):
     print()
     print(game)
@@ -12,6 +13,7 @@ def print_pause(game, pause_each_move):
     else:
         print()
 
+# Runs a full local game using the input AIs and starting hands. Optional parameter to pause on each move.
 def run_ai_local_game_routine(ais, wonders, starting_hands, pause_each_move=False):
     game = KnownGame(wonders)
     ai_games = [AiGame(i) for i in range(len(ais))]

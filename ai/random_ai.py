@@ -2,6 +2,7 @@ from game.base import *
 
 from random import choice
 
+# An AI which makes random choices from the list of possible moves.
 class RandomAi:
     def get_selection(self, ai_game, cards):
         ai_info = ai_game.get_ai_info()
@@ -9,17 +10,13 @@ class RandomAi:
 
         #print(possible_moves)
 
+        # To make the AI a bit more interesting, remove the 'throw' move if there are other valid moves.
         if len(possible_moves) > 1:
-            possible_moves.pop()  # Remove throw
+            possible_moves.pop()
 
         move = choice(possible_moves)
 
-        # todo: remove after testing wonders
-        if ai_info.wonder.name != 'Halikarnassos' and any(sel.action == 'wonder' for sel in possible_moves):
-            move = next(sel for sel in possible_moves if sel.action == 'wonder')
-        if ai_info.wonder.name == 'Halikarnassos' and len(cards) == 2 and any(sel.action == 'wonder' for sel in possible_moves):
-            move = next(sel for sel in possible_moves if sel.action == 'wonder')
-
+        # If the move is to build a wonder stage or throw, randomly choose a card from the hand to use.
         if move.action in ['wonder', 'throw']:
             move = Selection(choice(cards), move.action, move.payment)
         
@@ -33,12 +30,13 @@ class RandomAi:
 
         #print([card.name for card in possible_cards])
 
+        # Returning None skips the discard play.
         if len(possible_cards) == 0:
-            print(f"No possible cards in the discard?: {cards}")
+            print(f"No possible cards in the discard: {cards}")
             return None
         
         card = choice(possible_cards)
 
-        print('AI wants play from discard:', card.name)
+        print('AI wants to play from discard:', card.name)
 
         return card

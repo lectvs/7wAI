@@ -4,6 +4,8 @@ from game.ai_game import *
 from game.deck import *
 from game.wonders import *
 
+# Runs a full predetermined game locally using the input starting hands and moves. Optional parameter to pause on each move.
+# The input AI will provide its opinion on which move to make on each move, but this has no effect on the actual move performed.
 def run_known_game_routine(ai, ai_i, wonders, starting_hands, moves, pause_each_move=False):
     game = KnownGame(wonders)
     ai_game = AiGame(ai_i)

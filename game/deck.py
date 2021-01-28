@@ -1,5 +1,7 @@
 from game.base import *
 
+# This file contains all cards in the base 7 Wonders game, for all player counts.
+
 # AGE 1
 LUMBER_YARD = Card('Lumber Yard', 'brown', cost(), [Effect('resource', 'wood', 1)], [])
 STONE_PIT = Card('Stone Pit', 'brown', cost(), [Effect('resource', 'stone', 1)], [])
@@ -83,6 +85,8 @@ DECORATORS_GUILD = Card('Decorators Guild', 'purple', cost(ore=2, stone=1, loom=
 SCIENTISTS_GUILD = Card('Scientists Guild', 'purple', cost(wood=2, ore=2, press=1), [Effect('multi_science', 'compass/tablet/gear', 1)], [])
 SHIPOWNERS_GUILD = Card('Shipowners Guild', 'purple', cost(wood=3, glass=1, press=1), [Effect('points_for_self_cards', 'brown', 1), Effect('points_for_self_cards', 'grey', 1), Effect('points_for_self_cards', 'purple', 1)], [])
 
+# Returns a list of Cards in the deck for the given player count and age.
+# Note: will return all guilds in age 3 (at the beginning of the list). Removal of guilds must be done by the caller.
 def get_cards_for_players_age(players, age):
     if age == 1:
         cards = [
@@ -201,6 +205,7 @@ def get_cards_for_players_age(players, age):
         cards = []
     return cards
 
+# Gets a card by its name.
 def get_card_by_name(name):
     for age in [1, 2, 3]:
         for card in get_cards_for_players_age(7, age):

@@ -1,5 +1,13 @@
 from game.base import *
 
+# Simulates a 7 Wonders game locally.
+# - wonders: a list of Wonders in this game
+# - hands: a list of Card lists representing each player's hand
+# - discard_pile: a list of all Cards in the discard pile
+# - age: the age of the game (1, 2, 3)
+# - age_initialized: describes if the age has been initialized
+# - wait_for_last_card_play: describes if we are waiting for Babylon to play its last card
+# - wait_for_discard_play: describes if we are waiting for Halikarnassos to build from the discard
 class KnownGame:
     def __init__(self, wonders):
         self.wonders = wonders
@@ -10,6 +18,7 @@ class KnownGame:
         self.wait_for_last_card_play = False
         self.wait_for_discard_play = False
 
+    # Initializes the age with the given hands dealt to players.
     def initialize_age(self, age, hands):
         if len(hands) != len(self.wonders):
             raise Exception("Number of wonders is different from the number of hands")
@@ -21,6 +30,7 @@ class KnownGame:
         self.age = age
         self.age_initialized = True
 
+    # Executes a turn with all selections provided.
     def execute_turn(self, selections):
         # Validate
         if not self.age_initialized:
@@ -35,7 +45,7 @@ class KnownGame:
             is_valid, error = self.wonders[i].validate_selection(self.wonders, self.hands[i], selections[i])
             if not is_valid:
                 raise Exception(f"Error for {self.wonders[i].name}: {error}")
-        # Perform
+        # Perform turn
         effects_for_process = [[] for wonder in self.wonders]
         for i in range(len(self.wonders)):
             self.execute_selection(i, selections[i], effects_for_process)
@@ -53,9 +63,11 @@ class KnownGame:
                     self.discard_pile.extend(self.hands[i])
                     self.hands[i].clear()
 
+        # Only process the end of the turn after last-card-play/discard-play.
         if not self.wait_for_last_card_play and not self.wait_for_discard_play:
             self.process_end_of_turn()
 
+    # Executes Babylon's last card turn with the provided Selection.
     def execute_last_card_turn(self, selection):
         # Validate
         if not self.age_initialized:
@@ -76,6 +88,7 @@ class KnownGame:
         if not self.wait_for_discard_play:
             self.process_end_of_turn()
     
+    # Executes Halikarnassos' discard play with the provided Card.
     def execute_discard_turn(self, card):
         # Validate
         if not self.age_initialized:
@@ -100,11 +113,15 @@ class KnownGame:
         self.wait_for_discard_play = False
         self.process_end_of_turn()
 
+    # Process end of turn, including:
+    # - Rotating hands around the table
+    # - Resolving military post-age
+    # - Ending each age
     def process_end_of_turn(self):
         # End of age?
         if len(self.hands[0]) == 0:
             for wonder in self.wonders:
-                neg_wonder = self.get_neg_neighbor(wonder)
+                neg_wonder = wonder.get_neighbors(self.wonders)[0]
                 wonder_shields = wonder.get_shields()
                 neg_wonder_shields = neg_wonder.get_shields()
                 
@@ -125,6 +142,7 @@ class KnownGame:
             else:
                 self.hands.insert(0, self.hands.pop())  # Rotate pos in age 1,3
 
+    # Helper for execute_turn
     def execute_selection(self, i, selection, effects_for_process):
         hand, wonder = self.hands[i], self.wonders[i]
         wonder.play_selection(self.wonders, selection, apply_immediate_effects=False)
@@ -141,6 +159,7 @@ class KnownGame:
             print(f"{wonder.name} throws {selection.card.name} for 3 gold")
         hand.remove(selection.card)
 
+    # Helper for execute_turn
     def execute_effects(self, wonder, effects):
         previous_gold = wonder.gold
         wonder.apply_immediate_effects(self.wonders, effects)
@@ -152,6 +171,7 @@ class KnownGame:
             print(f"{wonder.name} can build a card from the discard pile")
             self.wait_for_discard_play = True
 
+    # Helper for execute_selection
     def execute_payment(self, wonder, payment):
         if payment:
             neg_neighbor, pos_neighbor = wonder.get_neighbors(self.wonders)
@@ -159,30 +179,22 @@ class KnownGame:
             pos_neighbor.gold += payment.pos
             pm = []
             if payment.neg > 0:
-                pm.append(f"{payment.neg} to {self.get_neg_neighbor(wonder).name}")
+                pm.append(f"{payment.neg} to {neg_neighbor.name}")
             if payment.pos > 0:
-                pm.append(f"{payment.pos} to {self.get_pos_neighbor(wonder).name}")
+                pm.append(f"{payment.pos} to {pos_neighbor.name}")
             if payment.bank > 0:
                 pm.append(f"{payment.bank} to the bank")
             
             if payment.total() > 0:
                 print(f"{wonder.name} pays: {', '.join(pm)}")
 
-    def get_pos_neighbor(self, wonder):
-        return self.wonders[(self.wonders.index(wonder) + 1) % len(self.wonders)]
-    
-    def get_neg_neighbor(self, wonder):
-        return self.wonders[(self.wonders.index(wonder) - 1) % len(self.wonders)]
-
+    # Returns the current sum total score of all wonders in the game.
     def get_total_score(self):
-        return sum(sum(wonder.compute_points_distribution(self.wonders).values()) for wonder in self.wonders)
+        return sum(wonder.compute_points_total(self.wonders) for wonder in self.wonders)
 
-    def get_points_str(self, wonder):
-        distr = wonder.compute_points_distribution(self.wonders)
-        return f"{distr.get('military', 0)}/{distr.get('gold', 0)}/{distr.get('points', 0)}/{distr.get('science', 0)}/{distr.get('yellow', 0)}/{distr.get('guild', 0)}/{sum(distr.values())}"
-
+    # Returns a representation of each wonder, points distribution, hands, and discard count on separate lines.
     def __repr__(self):
-        points = [self.get_points_str(wonder) for wonder in self.wonders]
+        points = [wonder.get_points_str(self.wonders) for wonder in self.wonders]
         wonders = '\n'.join([f"Wonder: {self.wonders[i]}, Points: {points[i]}, Hand: {[card.name for card in self.hands[i]]}" for i in range(len(self.wonders))])
         discard = f"Discarded cards: {len(self.discard_pile)}"
         return f"{wonders}\n{discard}"

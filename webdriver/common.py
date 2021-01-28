@@ -6,10 +6,24 @@ from game.wonders import *
 from time import sleep
 from collections import namedtuple
 
-
+# Represents a player on BGA.
+# - id: the numeric id of the player
+# - name: the username of the player
+# - wonder: the numeric id of the wonder the player is controlling
 PlayerInfo = namedtuple('PlayerInfo', ['id', 'name', 'wonder'])
+
+# Represents a card from the discard pile selector on BGA.
+# - discard_id: the numeric id of the card
+# - img_index: the index of the card on the BGA master card image
+# - card: the Card this discard card represents
 DiscardCardInfo = namedtuple('DiscardCardInfo', ['discard_id', 'img_index', 'card'])
 
+# Represents high-level info about the game.
+# - players: the list of in-game players (in turn order). active user is always at index 0.
+# - wonders_by_id: mapping of a wonders' BGA numeric ids to the Wonders they represent
+# - cards_by_id: mapping of cards' BGA numeric ids to the Cards they represent
+# - cards_by_img_index: mapping of cards' BGA image index to the Cards they represent
+# - age: the current age of the game (1, 2, 3)
 class GameInfo:
     def __init__(self, players, wonders_by_id, cards_by_id, cards_by_img_index, age):
         self.players = players
@@ -18,7 +32,7 @@ class GameInfo:
         self.cards_by_img_index = cards_by_img_index
         self.age = age
 
-
+# Log in to BGA using the given username and password.
 def log_in(driver, user, pw):
     driver.get('https://boardgamearena.com/')
 
@@ -30,6 +44,7 @@ def log_in(driver, user, pw):
     while driver.current_url != 'https://boardgamearena.com/':
         sleep(1)
 
+# Attempt to rejoin a game in progress if applicable.
 def attempt_rejoin(driver):
     banner_links = driver.find_elements_by_css_selector('#current_table_banner a')
     if not banner_links or banner_links[0].text != '7 Wonders':
@@ -41,6 +56,7 @@ def attempt_rejoin(driver):
         return
     go_to_link.click()
 
+# Go to and start a replay for the given table id, from the perspective of the given player_id.
 def go_to_replay(driver, table_id, player_id):
     driver.get(f'https://en.boardgamearena.com/gamereview?table={table_id}')
     driver.find_element_by_id(f'choosePlayerLink_{player_id}').click()
@@ -50,9 +66,11 @@ def go_to_replay(driver, table_id, player_id):
         driver.find_element_by_id('archive_next').click()
         sleep(0.5)
 
+# Go to the given table id.
 def go_to_table(driver, table_id):
     driver.get(f'https://boardgamearena.com/table?table={table_id}')
 
+# Accept an invite to a game if applicable.
 def accept_invite(driver):
     driver.get('https://boardgamearena.com/')
     for e in driver.find_elements_by_css_selector('#expected_table_banners a'):
@@ -60,14 +78,17 @@ def accept_invite(driver):
             e.click()
             return
 
+# Start the game as the host of a table.
 def start_game(driver):
     while not driver.find_element_by_id('startgame').text.strip():
         sleep(0.1)
     driver.find_element_by_id('startgame').click()
 
+# Toggle sound off while in-game.
 def toggle_sound(driver):
     driver.find_element_by_id('toggleSound').click()
 
+# Fetches all info in a GameInfo object from the BGA game.
 def get_game_info(driver):
     player_data = driver.execute_script('return gameui.gamedatas.players')
     player_order_data = driver.execute_script('return gameui.gamedatas.playerorder')
@@ -81,6 +102,7 @@ def get_game_info(driver):
 
     return GameInfo(players, wonders_by_id, cards_by_id, cards_by_img_index, 1)
 
+# Gets the current game state.
 DONE = 'done'
 CHOOSE_SIDE = 'choose_side'
 WAITING = 'waiting'
@@ -101,6 +123,7 @@ def get_game_state(driver):
         return PLAY_DISCARD
     return WAITING
 
+# Returns a best-guess of the current age of the game.
 def get_age(driver, game_info, wonders):
     age_from_game_info = len(driver.execute_script('let args = gameui.gamedatas.gamestate.args; return args ? args.age : ""') or "")
     if age_from_game_info > 0:
@@ -125,14 +148,16 @@ def get_age(driver, game_info, wonders):
             return max_age_from_cards
     return 1
 
-
+# Sets the age of the game on the GameInfo.
 def set_age(driver, game_info, wonders):
     game_info.age = get_age(driver, game_info, wonders)
 
+# Choose the wonder side.
 def choose_side(driver, pid, side):
         side = {'Day': 'a', 'Night': 'b'}[side]
         driver.find_element_by_id(f'wonder_face_{pid}_{side}').click()
 
+# Reads the Wonders from BGA along with everything associated with them (military tokens, played cards, etc.)
 def get_wonders(driver, game_info):
     board_elements = [driver.find_element_by_id(f'player_board_wrap_{p.id}') for p in game_info.players]
     military_tokens_data = driver.execute_script('let res = {}; for (let key in gameui.victoryStock) { res[key] = gameui.victoryStock[key].items.map(i => parseInt(i.type)) }; return res')
@@ -153,6 +178,7 @@ def get_wonders(driver, game_info):
     
     return wonders
 
+# Read the current hand.
 def read_hand(driver, game_info):
     card_elements = driver.find_elements_by_css_selector('#player_hand > div > div')
     cards = []
@@ -164,6 +190,7 @@ def read_hand(driver, game_info):
         cards.append(card)
     return cards
 
+# Read the current discard pile.
 def read_discard(driver, game_info):
     card_elements = driver.find_elements_by_css_selector('#discarded > [id^=discarded_item_]')
     cards = []
@@ -178,6 +205,7 @@ def read_discard(driver, game_info):
         cards.append(DiscardCardInfo(discard_id, img_index, card))
     return cards
 
+# Read the last move for each player from the game logs (logs must be visible for reading to succeed).
 def read_last_move(driver, game_info):
     move = [None for player in game_info.players]
     logs = [e.text.split('\n')[0].strip() for e in driver.find_elements_by_css_selector('#logs > div[id^=log_]')]
@@ -197,10 +225,9 @@ def read_last_move(driver, game_info):
                 card_name = m.group(2).split(' for')[0].split(' (chained')[0]
                 move[i] = Selection(get_card_by_name(card_name), 'play', None)
                 break
-        # if move[i] is None:
-        #     raise Exception(f'No valid last move found for player {player.name}')
     return move
 
+# Play the given Selection on BGA.
 def play_selection(driver, game_info, wonders, selection):
     if not selection.card:
         raise Exception('Selection must contain a card')
@@ -254,7 +281,7 @@ def play_selection(driver, game_info, wonders, selection):
         
         raise Exception(f'No matching payment options for {selection}')
 
-
+# Play the given Card from the discard on BGA.
 def play_from_discard(driver, game_info, card):
     if not card:
         driver.find_element_by_id('dontpick').click()

@@ -1,14 +1,37 @@
 from collections import namedtuple
 
+# Resource lists
 BROWN_RESOURCES = ['wood', 'ore', 'clay', 'stone']
 GREY_RESOURCES = ['glass', 'press', 'loom']
 ALL_RESOURCES = BROWN_RESOURCES + GREY_RESOURCES
 
+# The cost of a card or wonder stage.
+# - gold: the pure gold cost of the card (e.g. Timber Yard costs 1 gold)
+# - resources: a list of resources required (e.g. ["wood", "wood", "ore"])
+# - chain: the chain used to build this card for free
 Cost = namedtuple('Cost', ['gold', 'resources', 'chain'])
+
+# An effect provided by a card or wonder stage.
+# - type: the type of the effect (e.g. Vineyard has the "gold_for_cards" type)
+# - subtype: a further specification of the effect type (e.g. Vineyard has the "brown" subtype to indicate it only applies to brown cards)
+# - amount: the amount of the effect, if applicable (e.g. a 4-point blue card would have amount=4)
 Effect = namedtuple('Effect', ['type', 'subtype', 'amount'])
+
+# A card.
+# - name: the name of the card (e.g. "Archery Range")
+# - color: the color of the card ("brown", "grey", "red", "green", "blue", "yellow", "purple")
+# - cost: the Cost of the card
+# - effects: a list of Effects provided by the card
+# - chains: a list of chains provided by the card for future use (e.g. "hammer")
 Card = namedtuple('Card', ['name', 'color', 'cost', 'effects', 'chains'])
+
+# A wonder stage.
+# - stage_number: the number of the stage (e.g. the second stage of a wonder has stage_number=2)
+# - cost: the Cost of the stage
+# - effects: a list of Effects provided by the stage
 WonderStage = namedtuple('WonderStage', ['stage_number', 'cost', 'effects'])
 
+# Convenience method to define a cost by parameters instead of a resource list.
 def cost(gold=0, wood=0, ore=0, clay=0, stone=0, press=0, loom=0, glass=0, chain=None):
     resources = []
     resources.extend('wood' for _ in range(wood))
@@ -20,6 +43,8 @@ def cost(gold=0, wood=0, ore=0, clay=0, stone=0, press=0, loom=0, glass=0, chain
     resources.extend('glass' for _ in range(glass))
     return Cost(gold, resources, chain)
 
+# Represents a payment, split by amount to be paid to the negative neighbor, bank, and positive neighbor.
+# - payment.total() returns the sum total gold paid.
 Payment = namedtuple('Payment', ['neg', 'bank', 'pos'])
 class Payment(Payment):
     def total(self):
@@ -27,6 +52,13 @@ class Payment(Payment):
     def __repr__(self):
         return f"<{self.neg}, {self.bank}, {self.pos}>"
 
+# Represents a selection to be played by a player during a turn.
+# - card: the card selected. can be None if unknown
+# - action: the action to be performed
+#     - "play" plays the card
+#     - "wonder" buries the card in the next free wonder stage
+#     - "throw" discards the card for 3 gold
+# - payment: the payment needed to play the card. note: None is equivalent to Payment(0, 0, 0)
 Selection = namedtuple('Selection', ['card', 'action', 'payment'])
 class Selection(Selection):
     def __repr__(self):
@@ -41,6 +73,15 @@ class Selection(Selection):
             return f"Throw{card} for 3 gold"
         return 'ERROR'
 
+# Represents a wonder board in the game and everything attached to it.
+# - name: the name of the wonder (e.g. "Giza")
+# - side: the side of the wonder ("Day", "Night")
+# - starting_effects: effects the wonder starts with (e.g. Giza starts with 1 stone)
+# - stages: list of WonderStages of this wonder
+# - stages_built: number of stages currently built by this wonder
+# - gold: wonder's current gold
+# - military tokens: list of this wonder's current military token amounts (e.g. [-1, -1, 3, 5])
+# - played_cards: list of all Cards played by this wonders
 class Wonder:
     def __init__(self, name, side, starting_gold, starting_effects, stages):
         self.name = name
@@ -53,6 +94,7 @@ class Wonder:
         self.military_tokens = []
         self.played_cards = []
     
+    # Returns a new Wonder with the specified selection played and all immediate effects applied.
     def with_simulated_selection(self, wonders, selection):
         new_wonder = Wonder(self.name, self.side, self.gold, self.starting_effects, self.stages)
         new_wonder.stages_built = self.stages_built
@@ -62,6 +104,7 @@ class Wonder:
         new_wonder.play_selection(wonders, selection, apply_immediate_effects=True)
         return new_wonder
 
+    # Plays the selection on this wonder.
     def play_selection(self, wonders, selection, apply_immediate_effects):
         if selection.action == 'play':
             if selection.payment:
@@ -78,6 +121,7 @@ class Wonder:
         if selection.action == 'throw':
             self.gold += 3
 
+    # Applies all immediate effects (e.g. gold from playing Vineyard).
     def apply_immediate_effects(self, wonders, effects):
         neg_neighbor, pos_neighbor = self.get_neighbors(wonders)
         for effect in effects:
@@ -96,6 +140,7 @@ class Wonder:
                 total_gold = 3 * self.stages_built
                 self.gold += total_gold
     
+    # Returns a tuple of Wonders for this wonder's (negative_neighbor, positive_neighbor).
     def get_neighbors(self, wonders):
         i = -1
         for j in range(len(wonders)):
@@ -106,14 +151,19 @@ class Wonder:
             raise Exception(f'Wonder {self.name} is not in: {wonders}')
         return (wonders[(i-1) % len(wonders)], wonders[(i+1) % len(wonders)])
     
+    # Returns all effects present in this wonder (starting effects and effects from cards and stages).
     def all_effects(self):
         yield from self.starting_effects
         yield from (effect for stage in self.stages[:self.stages_built] for effect in stage.effects)
         yield from (effect for card in self.played_cards for effect in card.effects)
     
+    # Returns True iff the wonder has an effect with the specified type (and optionally subtype).
     def has_effect(self, type, subtype=None):
         return any(effect.type == type and (subtype is None or effect.subtype == subtype) for effect in self.all_effects())
     
+    # Returns (resources, multi_resources), with:
+    # - resources: all single resources produced (e.g. with Loom and Foundry, resources=["loom", "ore", "ore"])
+    # - multi_resources: all multi-resources produced, as lists of their resources (e.g. with Clay Pit and Forum, multi_resources=[["clay", "ore"], ["loom", "press", "glass"]])
     def get_resources(self):
         resources = []
         multi_resources = []
@@ -126,6 +176,7 @@ class Wonder:
                 multi_resources.extend(effect.subtype.split('/') for _ in range(effect.amount))
         return (resources, multi_resources)
     
+    # Same result as get_resources method, but limited to only resources/multi-resources purchasable by neighbors.
     def get_purchasable_resources(self):
         resources = []
         multi_resources = []
@@ -136,25 +187,32 @@ class Wonder:
                 multi_resources.extend(effect.subtype.split('/') for _ in range(effect.amount))
         return (resources, multi_resources)
     
+    # Returns a list of all resources produced, treating multi-resources as separate resources (e.g. with Loom and Clay Pit, this returns ["loom", "clay", "ore"])
     def get_all_resources_produced(self):
         resources, multi_resources = self.get_resources()
         for mr in multi_resources:
             resources.extend(mr)
         return resources
     
+    # Returns all cards of the given color.
     def get_cards_by_color(self, color):
         return [card for card in self.played_cards if card.color == color]
 
+    # Returns the last built stage (e.g. if the wonder has build TWO stages, returns the SECOND stage)
+    # Returns None if no stages are built.
     def get_last_built_stage(self):
         if self.stages_built <= 0:
             return None
         return self.stages[self.stages_built-1]
 
+    # Returns the next stage to build (e.g. if the wonder has build TWO stages, returns the THIRD stage)
+    # Returns None if all stages are built.
     def get_next_free_stage(self):
         if self.stages_built >= len(self.stages):
             return None
         return self.stages[self.stages_built]
     
+    # Gets the total number of shields in this wonder.
     def get_shields(self):
         shields = 0
         for effect in self.all_effects():
@@ -162,9 +220,13 @@ class Wonder:
                 shields += effect.amount
         return shields
     
+    # Returns True iff this wonder has the given chain on one of its played cards.
     def has_chain(self, chain):
         return any(chain in card.chains for card in self.played_cards)
     
+    # Returns (science, multi_science), with:
+    # - science: dict counts of each science symbol present
+    # - multi_science: list of lists of science symbols produced by multi_science cards (e.g. Scientists Guild gives ["gear", "compass", "tablet"])
     def get_science(self):
         science = {'gear': 0, 'compass': 0, 'tablet': 0}
         multi_science = []
@@ -175,9 +237,17 @@ class Wonder:
                 multi_science.append(effect.subtype.split('/'))
         return (science, multi_science)
     
+    # Computes the current total number of points for this wonder.
     def compute_points_total(self, wonders):
         return sum(self.compute_points_distribution(wonders).values())
+    
+    # Computes a string representation of the points distribution.
+    # Format: military/gold/raw-points/science/yellow/guild/total
+    def get_points_str(self, wonders):
+        distr = self.compute_points_distribution(wonders)
+        return f"{distr.get('military', 0)}/{distr.get('gold', 0)}/{distr.get('points', 0)}/{distr.get('science', 0)}/{distr.get('yellow', 0)}/{distr.get('guild', 0)}/{sum(distr.values())}"
 
+    # Computes the point distribution (as a dict) for points from all sources.
     def compute_points_distribution(self, wonders):
         neg_neighbor, pos_neighbor = self.get_neighbors(wonders)
         points = {'points': 0, 'military': 0, 'gold': 0, 'science': 0, 'yellow': 0, 'guild': 0}
@@ -206,10 +276,12 @@ class Wonder:
         points['science'] += self.compute_science_points()
         return points
     
+    # Computes the number of points from science.
     def compute_science_points(self):
         science, multi_science = self.get_science()
         return max(self.science_points_for(science, multi_science))
     
+    # Helper for compute_science_points
     def science_points_for(self, science, multi_science):
         if not multi_science:
             yield science['gear']**2 + science['compass']**2 + science['tablet']**2 + 7 * min(science[s] for s in science)
@@ -219,7 +291,9 @@ class Wonder:
             science[s] += 1
             yield from self.science_points_for(science, multi_science[1:])
             science[s] -= 1
-        
+    
+    # Returns a list of Selections for all possible moves from the given hand.
+    # Will include building a wonder stage (if possible) and discarding, but the Selection's card will be None.
     def get_all_possible_moves(self, wonders, hand):
         result = []
         for card in hand:
@@ -236,6 +310,7 @@ class Wonder:
         result.append(Selection(None, 'throw', None))
         return result
     
+    # Validates the selection. Returns (True, _) if selection is valid, and (False, error) if invalid.
     def validate_selection(self, wonders, hand, selection):
         if selection.card and selection.card not in hand:
             return (False, f"Selection made for a card not in hand: {selection.card.name}")
@@ -250,6 +325,7 @@ class Wonder:
         # Otherwise, action == 'throw', which is always valid
         return (True, None)
     
+    # Helper for validate_selection
     def validate_purchase(self, wonders, hand, selection):
         payment = selection.payment or Payment(0, 0, 0)
         if self.gold < payment.total():
@@ -260,6 +336,8 @@ class Wonder:
             return (False, f"{payment} is not a valid payment plan for purchase")
         return (True, None)
     
+    # Returns the lowest total Payment for the given selection.
+    # In the case of a tie, returns the Payment which best balances payment across neighbors.
     def get_min_gold_payment(self, wonders, hand, selection):
         payment_plans = self.get_all_payment_plans(wonders, hand, selection)
         if not payment_plans:
@@ -269,6 +347,7 @@ class Wonder:
 
         return min((plan for plan in payment_plans if plan.total() == min_payment_total), key=lambda plan: abs(plan.pos - plan.neg))
     
+    # Returns a list of all valid Payments for the given selection.
     def get_all_payment_plans(self, wonders, hand, selection):
         if selection.action == 'wonder' and not self.get_next_free_stage():
             return []
@@ -298,6 +377,7 @@ class Wonder:
         l = list(set(payment_plans))
         return l
     
+    # Helper for get_all_payment_plans
     def payment_plans_for(self, gold, rr, mr, htpos, htneg, hm, prpos, pmrpos, prneg, pmrneg):
         if not rr:
             yield Payment(0, gold, 0)
@@ -324,10 +404,14 @@ class Wonder:
             if resource in pmrneg[i]:
                 yield from self.add_payment(self.payment_plans_for(gold, rr[1:], mr, htpos, htneg, hm, prpos, pmrpos, prneg, pmrneg[:i] + pmrneg[i+1:]), cost, 0, 0)
 
+    # Helper for payment_plans_for
     def add_payment(self, plans, neg, bank, pos):
         for payment in plans:
             yield Payment(payment.neg + neg, payment.bank + bank, payment.pos + pos)
 
+    # Returns a representation of the wonder.
+    # Format: [name][side](gold=[gold], res=[resources])
+    # - resources: the first letter in each resource's name (e.g. stone="s", ore="o"). all multi-resources are "m"
     def __repr__(self):
         resources, multi_resources = self.get_resources()
         resources_str = ''.join(r[0] for r in resources) + ''.join('m' for m in multi_resources)

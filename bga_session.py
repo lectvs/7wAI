@@ -11,6 +11,16 @@ from selenium import webdriver
 from time import sleep
 from random import uniform, choice
 
+# Runs a full session on BGA.
+# Prerequisites:
+# - Install Selenium: https://selenium-python.readthedocs.io/installation.html#downloading-python-bindings-for-selenium
+# - Download the Firefox webdriver and add it to your PATH: https://selenium-python.readthedocs.io/installation.html#drivers
+# Steps:
+# - 1. Configure all users to log in in users.py
+# - 2. Run `python bga_session.py`
+# - 3. Navigate to the game on BGA until you are in-game (i.e. you can see your wonder board)
+# - 4. Press enter in console to start the AI
+# - 5. If manual_mode = True, press enter on each turn to perform the action.
 
 players = USERS
 manual_mode = True

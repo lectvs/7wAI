@@ -8,6 +8,8 @@ from webdriver.common import *
 from selenium import webdriver
 from time import sleep
 
+# Tests write functionality on BGA. This file is old and probably doesn't work anymore.
+
 driver = webdriver.Firefox()
 driver.implicitly_wait(10)
 

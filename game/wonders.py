@@ -1,6 +1,8 @@
 from game.base import *
 from random import randint, sample
 
+# This file contains wonder definitions for all wonders in the base 7 Wonders game.
+
 def GIZA_DAY():
     return Wonder('Giza', 'Day', 3, [Effect('resource', 'stone', 1)], [
         WonderStage(1, cost(wood=2), [Effect('points', '', 3)]),
@@ -101,10 +103,12 @@ ALL_WONDERS = [
     [HALIKARNASSOS_DAY, HALIKARNASSOS_NIGHT]
 ]
 
+# Returns a random sample of Wonders with random sides.
 def get_random_wonders(num):
     wonders = sample(ALL_WONDERS, num)
     return [wonder[randint(0, 1)]() for wonder in wonders]
 
+# Returns the wonder factory for the given BGA wonder name and side.
 def get_wonder_by_bga_name_side(name, side):
     name_i = {
         'The Pyramids of Giza': 0,

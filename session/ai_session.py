@@ -2,6 +2,13 @@ from selenium import webdriver
 from webdriver.common import *
 from game.ai_game import *
 
+# Control plane for an AI session on BGA.
+# - driver: the Selenium driver to use
+# - name: the name of the session (set to the BGA username by default)
+# - game_info: struct containing high-level game info. more details in webdriver/common.py
+# - game_state: the current state of the 7 Wonders game. more details in webdriver/common.py
+# - ai: the AI running for this session
+# - ai_game: the AiGame for this session
 class AiSession:
     def __init__(self, driver, user, pw, ai):
         self.driver = driver
@@ -14,20 +21,26 @@ class AiSession:
         log_in(self.driver, user, pw)
         attempt_rejoin(self.driver)
     
+    # Attempt to rejoin an in-progress game if applicable.
     def attempt_rejoin(self):
         attempt_rejoin(self.driver)
     
+    # Perform starting logic for the AI session.
     def start_ai(self):
         self.game_info = get_game_info(self.driver)
         toggle_sound(self.driver)
     
+    # Choose a random side of the wonder.
+    # TODO: AI selects wonder side?
     def choose_side(self, side):
         ai_id = self.game_info.players[0].id
         choose_side(self.driver, ai_id, side)
 
+    # Get the current game state and set it on this session object.
     def set_state(self):
         self.game_state = get_game_state(self.driver)
     
+    # Returns a Selection for the next move for this AI.
     def select(self):
         self.game_info = get_game_info(self.driver)
         self.set_state()
@@ -62,6 +75,7 @@ class AiSession:
             card = self.ai.get_build_card_from_discard(self.ai_game, [info.card for info in discard])
             return Selection(card, 'play', None)
 
+    # Performs the given Selection on BGA.
     def act(self, selection):
         if self.game_state == PLAY_NORMAL or self.game_state == PLAY_LAST_CARD:
             play_selection(self.driver, self.game_info, self.ai_game.wonders, selection)

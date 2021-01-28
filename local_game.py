@@ -3,6 +3,12 @@ from game.deck import *
 from game.wonders import *
 from ai.random_ai import RandomAi
 
+# Runs a local game where AIs make all the decisions.
+# Steps:
+# - 1. Adjust ais, wonders, and starting_hands below to your liking.
+# - 2. Run `python local_game.py`
+# - 3. Press enter to go to the next move.
+
 ais = [RandomAi(), RandomAi(), RandomAi()]
 wonders = [RHODOS_NIGHT(), HALIKARNASSOS_DAY(), BABYLON_NIGHT()]
 

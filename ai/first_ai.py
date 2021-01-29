@@ -12,7 +12,7 @@ def get_effects_from_selection(ai_game, selection):
     if selection.action == 'play':
         return selection.card.effects
     if selection.action == 'wonder':
-        return ai_game.get_ai_info().wonder.get_next_free_stage().effects
+        return ai_game.get_ai_wonder().get_next_free_stage().effects
     return []
 
 def score_multi(ai_game, selection):
@@ -23,7 +23,7 @@ def score_multi(ai_game, selection):
     return score
 
 def score_grey(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     if wonder.name + wonder.side in ['BabylonDay', 'BabylonNight', 'HalikarnassosNight']:
         return 0
     score = 0
@@ -39,7 +39,7 @@ def score_chain(ai_game, selection):
     return score
 
 def score_unlock_wonder_stage(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     hand = ai_game.get_ai_hand()
     future_wonder_stages = wonder.stages[wonder.stages_built:]
     score = 0
@@ -51,7 +51,7 @@ def score_unlock_wonder_stage(ai_game, selection):
     return score
 
 def score_cheapen_wonder_stage(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     future_wonder_stages = wonder.stages[wonder.stages_built:]
 
     resources_produced_without_card = wonder.get_all_resources_produced()
@@ -75,7 +75,7 @@ def score_cheapen_wonder_stage(ai_game, selection):
     return score
 
 def score_unlock_future_cards(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     hand = ai_game.get_ai_hand()
     score = 0
     for age in [1, 2, 3]:
@@ -89,7 +89,7 @@ def score_unlock_future_cards(ai_game, selection):
     return score
 
 def score_cheapen_future_cards(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
 
     resources_produced_without_card = wonder.get_all_resources_produced()
     resources_produced_with_card = wonder.with_simulated_selection(ai_game.wonders, selection).get_all_resources_produced()
@@ -113,7 +113,7 @@ def score_cheapen_future_cards(ai_game, selection):
     return score
 
 def score_points(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     payment = selection.payment or Payment(0, 0, 0)
     cards_left = len(ai_game.get_ai_hand())
     old_points = wonder.compute_points_total(ai_game.wonders)
@@ -142,7 +142,8 @@ def score_points(ai_game, selection):
 def score_shields(ai_game, selection):
     if all(effect.type != 'shields' for effect in get_effects_from_selection(ai_game, selection)):
         return 0
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
+    neg_neighbor, pos_neighbor = wonder.get_neighbors(ai_game.wonders)
     old_shields = wonder.get_shields()
     new_shields = wonder.with_simulated_selection(ai_game.wonders, selection).get_shields()
 
@@ -194,7 +195,7 @@ def score_play_from_discard_as_points(ai_game, selection):
     return points
 
 def score_science(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     if (wonder.name + wonder.side) not in ['BabylonDay', 'BabylonNight', 'HalikarnassosNight']:
         return 0
     points = 0
@@ -206,7 +207,7 @@ def score_science(ai_game, selection):
 def score_wonder_off_age(ai_game, selection):
     if selection.action != 'wonder':
         return 0
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     wonder_num = wonder.stages_built + 1
     wonders_left = len(wonder.stages) - wonder.stages_built
 
@@ -224,7 +225,7 @@ def score_wonder_off_age(ai_game, selection):
 def score_wonder_during_age(ai_game, selection):
     if selection.action != 'wonder':
         return 0
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     wonder_num = wonder.stages_built + 1
     num_cards_in_hand = len(ai_game.get_ai_hand())
 
@@ -237,7 +238,7 @@ def score_wonder_during_age(ai_game, selection):
     return 0
 
 def score_gold_gain(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     old_gold = wonder.gold
     new_gold = wonder.with_simulated_selection(ai_game.wonders, selection).gold
     gold_gain = new_gold - old_gold
@@ -255,7 +256,7 @@ def score_gold_gain(ai_game, selection):
     return score
 
 def score_gold_after_play(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
     num_cards_in_hand = len(ai_game.get_ai_hand())
     gold_after_play = wonder.with_simulated_selection(ai_game.wonders, selection).gold
 
@@ -278,7 +279,8 @@ def score_gold_after_play(ai_game, selection):
 def score_marketplace_greys(ai_game, selection):
     if all(e.type != 'marketplace' for e in get_effects_from_selection(ai_game, selection)):
         return 0
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
+    neg_neighbor, pos_neighbor = wonder.get_neighbors(ai_game.wonders)
     neg_pr, _ = neg_neighbor.get_purchasable_resources()
     pos_pr, _ = pos_neighbor.get_purchasable_resources()
     score = 0
@@ -289,7 +291,8 @@ def score_marketplace_greys(ai_game, selection):
     return score
 
 def score_tradingpost_browns(ai_game, selection):
-    wonder, neg_neighbor, pos_neighbor = ai_game.get_ai_info()
+    wonder = ai_game.get_ai_wonder()
+    neg_neighbor, pos_neighbor = wonder.get_neighbors(ai_game.wonders)
     effects = get_effects_from_selection(ai_game, selection)
     pr, pmr = None, None
     if any(e.type == 'tradingpost' and e.subtype == 'neg' for e in effects):
@@ -351,8 +354,6 @@ def get_score_distribution(ai_game, selection):
     }
 
     age = ai_game.age
-    wonder = ai_game.get_ai_info().wonder
-
     score = {
         'multi': weights[age].get('multi', 0) * score_multi(ai_game, selection),
         'grey': weights[age].get('grey', 0) * score_grey(ai_game, selection),
@@ -378,22 +379,22 @@ def get_score_distribution(ai_game, selection):
 
 class FirstAi:
     def get_selection(self, ai_game, cards):
-        ai_info = ai_game.get_ai_info()
-        possible_moves = ai_info.wonder.get_all_possible_moves(ai_game.wonders, cards)
+        wonder = ai_game.get_ai_wonder()
+        possible_moves = wonder.get_all_possible_moves(ai_game.wonders, cards)
 
         move = self.choose_pick_scores_reasons(ai_game, possible_moves)
         
         if move.action == 'wonder':
-            if len(cards) == 2 and any(e.type == 'build_from_discard' for e in ai_info.wonder.get_next_free_stage().effects):
-                bury_card = next((card for card in cards if card in ai_info.wonder.played_cards), None)
+            if len(cards) == 2 and any(e.type == 'build_from_discard' for e in wonder.get_next_free_stage().effects):
+                bury_card = next((card for card in cards if card in wonder.played_cards), None)
                 if not bury_card:
                     bury_card = min(cards, key=lambda card: sum(get_score_distribution(ai_game, Selection(card, 'play', None)).values()))
             else:
                 bury_card = choice(cards)
             move = Selection(bury_card, move.action, move.payment)
         elif move.action == 'throw':
-            if ai_info.wonder.get_next_free_stage() and any(e.type == 'build_from_discard' for e in ai_info.wonder.get_next_free_stage().effects):
-                possible_cards = [card for card in cards if card not in ai_info.wonder.played_cards]
+            if wonder.get_next_free_stage() and any(e.type == 'build_from_discard' for e in wonder.get_next_free_stage().effects):
+                possible_cards = [card for card in cards if card not in wonder.played_cards]
                 bury_card = max(possible_cards, key=lambda card: sum(get_score_distribution(ai_game, Selection(card, 'play', None)).values()))
             else:
                 bury_card = choice(cards)
@@ -404,8 +405,8 @@ class FirstAi:
         return move
     
     def get_build_card_from_discard(self, ai_game, cards):
-        ai_info = ai_game.get_ai_info()
-        possible_cards = [card for card in cards if card not in ai_info.wonder.played_cards]
+        wonder = ai_game.get_ai_wonder()
+        possible_cards = [card for card in cards if card not in wonder.played_cards]
 
         possible_moves = [Selection(card, 'play', None) for card in possible_cards]
 

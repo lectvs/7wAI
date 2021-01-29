@@ -19,10 +19,10 @@ def run_known_game_routine(ai, ai_i, wonders, starting_hands, moves, pause_each_
             print()
             print(ai_game)
             print()
-            ai_info = ai_game.get_ai_info()
-            if not game.wait_for_last_card_play and game.wait_for_discard_play and ai_info.wonder.name == 'Halikarnassos':
+            wonder = ai_game.get_ai_wonder()
+            if not game.wait_for_last_card_play and game.wait_for_discard_play and wonder.name == 'Halikarnassos':
                 ai.get_build_card_from_discard(ai_game, game.discard_pile)
-            elif game.wait_for_last_card_play and ai_info.wonder.name == 'Babylon':
+            elif game.wait_for_last_card_play and wonder.name == 'Babylon':
                 ai.get_selection(ai_game, game.hands[ai_i])
             elif not game.wait_for_discard_play and not game.wait_for_last_card_play:
                 ai.get_selection(ai_game, game.hands[ai_i])

@@ -12,7 +12,7 @@ from random import shuffle, sample
 # - 2: Run `python loop_local_games.py`
 
 ais = [FirstAi(), FirstAi(), FirstAi(), FirstAi()]
-num_games = 50
+num_games = 20
 
 player_count = len(ais)
 best_game = None

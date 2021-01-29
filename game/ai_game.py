@@ -4,8 +4,6 @@ from game.base import *
 
 # Everything the AI tracks about a hand as it moves around the table.
 Hand = namedtuple('Hand', ['known_cards'])
-# Convenience type containing the AI's wonder and its neighbors.
-AiInfo = namedtuple('AiInfo', ['wonder', 'neg_neighbor', 'pos_neighbor'])
 
 # Represents a partially-known game from a single player/AI's perspective.
 # - i: the index of the AI's wonder/hand/etc.
@@ -21,10 +19,9 @@ class AiGame:
         self.wonders = []
         self.initialized = False
 
-    # Returns in a tuple the AI's wonder, its negative neighbor, and its positive neighbor.
-    def get_ai_info(self):
-        neg_neighbor, pos_neighbor = self.wonders[self.i].get_neighbors(self.wonders)
-        return AiInfo(self.wonders[self.i], neg_neighbor, pos_neighbor)
+    # Returns the Wonder controlled by the AI.
+    def get_ai_wonder(self):
+        return self.wonders[self.i]
 
     # Returns the list of Cards in the AI's current hand.
     def get_ai_hand(self):

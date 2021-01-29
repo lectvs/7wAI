@@ -53,6 +53,7 @@ class Payment(Payment):
         return f"<{self.neg}, {self.bank}, {self.pos}>"
 
 # Represents a selection to be played by a player during a turn.
+# Sometimes used synonymously with "move", sorry :(
 # - card: the card selected. can be None if unknown
 # - action: the action to be performed
 #     - "play" plays the card

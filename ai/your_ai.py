@@ -6,7 +6,7 @@ from random import choice
 # Use this as a template to construct your AI!
 # Currently this AI greedily picks the card/wonder that gives it the most points.
 #
-# Most of the structs used 
+# Most of the structs used are defined in game/base.py
 #
 # Some useful methods:
 # - AI's wonder                         : ai_game.get_ai_wonder() -> Wonder

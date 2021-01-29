@@ -30,4 +30,4 @@ starting_hands = {
     ]
 }
 
-run_ai_local_game_routine(ais, wonders, starting_hands, pause_each_move=True)
+run_ai_local_game_routine(ais, wonders, starting_hands, verbose=True, pause_each_move=True)

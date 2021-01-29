@@ -2,6 +2,7 @@ from game.base import *
 
 # Simulates a 7 Wonders game locally.
 # - wonders: a list of Wonders in this game
+# - verbose: print out all selections/states as they occur
 # - hands: a list of Card lists representing each player's hand
 # - discard_pile: a list of all Cards in the discard pile
 # - age: the age of the game (1, 2, 3)
@@ -9,8 +10,9 @@ from game.base import *
 # - wait_for_last_card_play: describes if we are waiting for Babylon to play its last card
 # - wait_for_discard_play: describes if we are waiting for Halikarnassos to build from the discard
 class KnownGame:
-    def __init__(self, wonders):
+    def __init__(self, wonders, verbose=True):
         self.wonders = wonders
+        self.verbose = verbose
         self.hands = [[] for wonder in wonders]
         self.discard_pile = []
         self.age = 1
@@ -57,7 +59,7 @@ class KnownGame:
         if len(self.hands[0]) == 1:
             for i in range(len(self.wonders)):
                 if self.wonders[i].has_effect('play_last_card', ''):
-                    print(f"{self.wonders[i].name} can play its last card")
+                    if self.verbose: print(f"{self.wonders[i].name} can play its last card")
                     self.wait_for_last_card_play = True
                 else:
                     self.discard_pile.extend(self.hands[i])
@@ -103,12 +105,12 @@ class KnownGame:
             if card in self.wonders[i].played_cards:
                 raise Exception(f"Cannot build card {card.name} from discard since it is already in the player's wonder")
             if not card:
-                print(f"{self.wonders[i].name} has decided not to play a card from the discard")
+                if self.verbose: print(f"{self.wonders[i].name} has decided not to play a card from the discard")
                 break
             self.wonders[i].played_cards.append(card)
             self.execute_effects(self.wonders[i], card.effects)
             self.discard_pile.remove(card)
-            print(f"{self.wonders[i].name} plays {card.name}")
+            if self.verbose: print(f"{self.wonders[i].name} plays {card.name}")
             break
         self.wait_for_discard_play = False
         self.process_end_of_turn()
@@ -126,13 +128,13 @@ class KnownGame:
                 neg_wonder_shields = neg_wonder.get_shields()
                 
                 if wonder_shields == neg_wonder_shields:
-                    print(f"{neg_wonder.name} and {wonder.name} tie on military with {wonder_shields} shields each")
+                    if self.verbose: print(f"{neg_wonder.name} and {wonder.name} tie on military with {wonder_shields} shields each")
                 elif wonder_shields > neg_wonder_shields:
-                    print(f"{wonder.name} defeats {neg_wonder.name}, {wonder_shields} shields to {neg_wonder_shields}")
+                    if self.verbose: print(f"{wonder.name} defeats {neg_wonder.name}, {wonder_shields} shields to {neg_wonder_shields}")
                     wonder.military_tokens.append({ 1: 1, 2: 3, 3: 5 }[self.age])
                     neg_wonder.military_tokens.append(-1)
                 else:
-                    print(f"{neg_wonder.name} defeats {wonder.name}, {neg_wonder_shields} shields to {wonder_shields}")
+                    if self.verbose: print(f"{neg_wonder.name} defeats {wonder.name}, {neg_wonder_shields} shields to {wonder_shields}")
                     neg_wonder.military_tokens.append({ 1: 1, 2: 3, 3: 5 }[self.age])
                     wonder.military_tokens.append(-1)
             self.age_initialized = False
@@ -149,14 +151,14 @@ class KnownGame:
         if selection.action == 'play':
             self.execute_payment(wonder, selection.payment)
             effects_for_process[i] = selection.card.effects
-            print(f"{wonder.name} plays {selection.card.name}")
+            if self.verbose: print(f"{wonder.name} plays {selection.card.name}")
         if selection.action == 'wonder':
             self.execute_payment(wonder, selection.payment)
             effects_for_process[i] = wonder.get_last_built_stage().effects
-            print(f"{wonder.name} buries {selection.card.name} to build wonder stage {wonder.stages_built}")
+            if self.verbose: print(f"{wonder.name} buries {selection.card.name} to build wonder stage {wonder.stages_built}")
         if selection.action == 'throw':
             self.discard_pile.append(selection.card)
-            print(f"{wonder.name} throws {selection.card.name} for 3 gold")
+            if self.verbose: print(f"{wonder.name} throws {selection.card.name} for 3 gold")
         hand.remove(selection.card)
 
     # Helper for execute_turn
@@ -166,9 +168,9 @@ class KnownGame:
 
         gold_gain = wonder.gold - previous_gold
         if wonder.gold != previous_gold:
-            print(f"{wonder.name} gains {wonder.gold - previous_gold} gold")
+            if self.verbose: print(f"{wonder.name} gains {wonder.gold - previous_gold} gold")
         if any(e.type == 'build_from_discard' for e in effects):
-            print(f"{wonder.name} can build a card from the discard pile")
+            if self.verbose: print(f"{wonder.name} can build a card from the discard pile")
             self.wait_for_discard_play = True
 
     # Helper for execute_selection
@@ -186,7 +188,7 @@ class KnownGame:
                 pm.append(f"{payment.bank} to the bank")
             
             if payment.total() > 0:
-                print(f"{wonder.name} pays: {', '.join(pm)}")
+                if self.verbose: print(f"{wonder.name} pays: {', '.join(pm)}")
 
     # Returns the current sum total score of all wonders in the game.
     def get_total_score(self):

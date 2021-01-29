@@ -239,6 +239,9 @@ def score_wonder_during_age(ai_game, selection):
 
 def score_gold_gain(ai_game, selection):
     wonder = ai_game.get_ai_wonder()
+    if wonder.gold >= 9:
+        return 0
+
     old_gold = wonder.gold
     new_gold = wonder.with_simulated_selection(ai_game.wonders, selection).gold
     gold_gain = new_gold - old_gold
@@ -346,7 +349,7 @@ def get_score_distribution(ai_game, selection):
         },
         3: {
             'points': 1,
-            'shields': 4,
+            'shields': 3.9,
             'wonder_during_age': -1.1,
             'gold_gain': 0.1,
             'gold_after_play': -2,
@@ -378,55 +381,65 @@ def get_score_distribution(ai_game, selection):
     return score
 
 class FirstAi:
+    def __init__(self, verbose=True):
+        self.verbose = verbose
+
     def get_selection(self, ai_game, cards):
         wonder = ai_game.get_ai_wonder()
-        possible_moves = wonder.get_all_possible_moves(ai_game.wonders, cards)
+        possible_selections = wonder.get_all_possible_selections(ai_game.wonders, cards)
 
-        move = self.choose_pick_scores_reasons(ai_game, possible_moves)
+        selection = self.choose_pick_scores_reasons(ai_game, possible_selections)
         
-        if move.action == 'wonder':
+        if selection.action == 'wonder':
             if len(cards) == 2 and any(e.type == 'build_from_discard' for e in wonder.get_next_free_stage().effects):
                 bury_card = next((card for card in cards if card in wonder.played_cards), None)
                 if not bury_card:
                     bury_card = min(cards, key=lambda card: sum(get_score_distribution(ai_game, Selection(card, 'play', None)).values()))
             else:
                 bury_card = choice(cards)
-            move = Selection(bury_card, move.action, move.payment)
-        elif move.action == 'throw':
+            selection = Selection(bury_card, selection.action, selection.payment)
+        elif selection.action == 'throw':
             if wonder.get_next_free_stage() and any(e.type == 'build_from_discard' for e in wonder.get_next_free_stage().effects):
                 possible_cards = [card for card in cards if card not in wonder.played_cards]
                 bury_card = max(possible_cards, key=lambda card: sum(get_score_distribution(ai_game, Selection(card, 'play', None)).values()))
             else:
                 bury_card = choice(cards)
-            move = Selection(choice(cards), move.action, move.payment)
+            selection = Selection(choice(cards), selection.action, selection.payment)
 
-        print('AI wants to:', move)
+        if self.verbose: print('AI wants to:', selection)
 
-        return move
+        return selection
     
     def get_build_card_from_discard(self, ai_game, cards):
         wonder = ai_game.get_ai_wonder()
         possible_cards = [card for card in cards if card not in wonder.played_cards]
 
-        possible_moves = [Selection(card, 'play', None) for card in possible_cards]
+        possible_selections = [Selection(card, 'play', None) for card in possible_cards]
 
-        move = self.choose_pick_scores_reasons(ai_game, possible_moves)
-        card = move.card
+        selection = self.choose_pick_scores_reasons(ai_game, possible_selections)
+        card = selection.card
         
-        print('AI wants play from discard:', card.name)
+        if self.verbose: print('AI wants play from discard:', card.name)
 
         return card
 
     # Print reasons for choosing each card and pick the best one.
-    def choose_pick_scores_reasons(self, ai_game, possible_moves):
-        possible_moves_scores = [(move, get_score_distribution(ai_game, move)) for move in possible_moves]
-        possible_moves_scores.sort(key=lambda ms: sum(ms[1].values()), reverse=True)
-        print([f'{ms[0]} ({sum(ms[1].values())})' for ms in possible_moves_scores])
+    def choose_pick_scores_reasons(self, ai_game, possible_selections):
+        possible_selections_scores = [(selection, get_score_distribution(ai_game, selection)) for selection in possible_selections]
+        possible_selections_scores.sort(key=lambda ms: sum(ms[1].values()), reverse=True)
         
-        for m in possible_moves_scores:
-            score_distr = m[1]
-            reasons = sorted([(s, score_distr[s]) for s in score_distr if score_distr[s] != 0], key=lambda s: s[1], reverse=True)
-            print('Reasons to', m[0], ':', ', '.join(f'{r[0]}: {r[1]}' for r in reasons))
+        if self.verbose:
+            print([f'{ms[0]} ({sum(ms[1].values())})' for ms in possible_selections_scores])
+            for m in possible_selections_scores:
+                score_distr = m[1]
+                reasons = sorted([(s, score_distr[s]) for s in score_distr if score_distr[s] != 0], key=lambda s: s[1], reverse=True)
+                print('Reasons to', m[0], ':', ', '.join(f'{r[0]}: {r[1]}' for r in reasons))
         
-        return possible_moves_scores[0][0]
+        return possible_selections_scores[0][0]
+    
+    def get_wonder_side(self, wonder_names):
+        wonder_name = wonder_names[0]
+        if wonder_name == 'Olympia':
+            return 'Day'
+        return 'Night'
     

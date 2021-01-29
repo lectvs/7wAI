@@ -6,23 +6,23 @@ from random import choice
 class RandomAi:
     def get_selection(self, ai_game, cards):
         wonder = ai_game.get_ai_wonder()
-        possible_moves = wonder.get_all_possible_moves(ai_game.wonders, cards)
+        possible_selections = wonder.get_all_possible_selections(ai_game.wonders, cards)
 
-        #print(possible_moves)
+        #print(possible_selections)
 
         # To make the AI a bit more interesting, remove the 'throw' move if there are other valid moves.
-        if len(possible_moves) > 1:
-            possible_moves.pop()
+        if len(possible_selections) > 1:
+            possible_selections.pop()
 
-        move = choice(possible_moves)
+        selection = choice(possible_selections)
 
         # If the move is to build a wonder stage or throw, randomly choose a card from the hand to use.
-        if move.action in ['wonder', 'throw']:
-            move = Selection(choice(cards), move.action, move.payment)
+        if selection.action in ['wonder', 'throw']:
+            selection = Selection(choice(cards), selection.action, selection.payment)
         
-        print('AI wants to:', move)
+        print('AI wants to:', selection)
 
-        return move
+        return selection
     
     def get_build_card_from_discard(self, ai_game, cards):
         wonder = ai_game.get_ai_wonder()
@@ -40,3 +40,6 @@ class RandomAi:
         print('AI wants to play from discard:', card.name)
 
         return card
+    
+    def get_wonder_side(self, wonder_names):
+        return choice(['Day', 'Night'])

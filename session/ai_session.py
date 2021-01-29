@@ -30,9 +30,11 @@ class AiSession:
         self.game_info = get_game_info(self.driver)
         toggle_sound(self.driver)
     
-    # Choose a random side of the wonder.
-    # TODO: AI selects wonder side?
-    def choose_side(self, side):
+    # Choose the side of the wonder your AI prefers.
+    def choose_side(self):
+        wonder_names = [self.game_info.wonders_by_id[player.wonder]().name for player in self.game_info.players]
+        side = self.ai.get_wonder_side(wonder_names)
+
         ai_id = self.game_info.players[0].id
         choose_side(self.driver, ai_id, side)
 

@@ -11,7 +11,8 @@ from random import shuffle, sample
 # - 1: Adjust the ais and num_games below to your liking.
 # - 2: Run `python loop_local_games.py`
 
-ais = [FirstAi(), FirstAi(), FirstAi(), FirstAi()]
+ai = FirstAi(verbose=False)
+ais = [ai, ai, ai, ai]
 num_games = 20
 
 player_count = len(ais)
@@ -37,10 +38,10 @@ for _ in range(num_games):
         3: [deck3[7*i:7*(i+1)] for i in range(player_count)],
     }
 
-    game = run_ai_local_game_routine(ais, wonders, starting_hands, pause_each_move=False)
+    game = run_ai_local_game_routine(ais, wonders, starting_hands, verbose=False, pause_each_move=False)
 
     if not best_game or game.get_total_score() > best_game.get_total_score():
         best_game = game
 
-    print("Best game:")
-    print(best_game)
+print("Best game:")
+print(best_game)

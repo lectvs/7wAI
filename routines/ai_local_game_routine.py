@@ -14,8 +14,8 @@ def print_pause(game, pause_each_move):
         print()
 
 # Runs a full local game using the input AIs and starting hands. Optional parameter to pause on each move.
-def run_ai_local_game_routine(ais, wonders, starting_hands, pause_each_move=False):
-    game = KnownGame(wonders)
+def run_ai_local_game_routine(ais, wonders, starting_hands, verbose=True, pause_each_move=False):
+    game = KnownGame(wonders, verbose)
     ai_games = [AiGame(i) for i in range(len(ais))]
 
     for age in [1, 2, 3]:
@@ -24,12 +24,12 @@ def run_ai_local_game_routine(ais, wonders, starting_hands, pause_each_move=Fals
             ai_games[i].initialize(age, game.wonders, game.hands[i])
 
         while game.age_initialized:
-            print_pause(game, pause_each_move)
+            if verbose: print_pause(game, pause_each_move)
             move = [ais[i].get_selection(ai_games[i], ai_games[i].get_ai_hand()) for i in range(len(ais))]
             game.execute_turn(move)
             
             if game.wait_for_last_card_play:
-                print_pause(game, pause_each_move)
+                if verbose: print_pause(game, pause_each_move)
                 for i in range(len(wonders)):
                     ai_games[i].pre_last_card_play(wonders, game.hands[i])
                 for i in range(len(wonders)):
@@ -40,7 +40,7 @@ def run_ai_local_game_routine(ais, wonders, starting_hands, pause_each_move=Fals
                     break
             
             if game.wait_for_discard_play:
-                print_pause(game, pause_each_move)
+                if verbose: print_pause(game, pause_each_move)
                 for i in range(len(wonders)):
                     if not wonders[i].has_effect('build_from_discard'):
                         continue
@@ -51,6 +51,8 @@ def run_ai_local_game_routine(ais, wonders, starting_hands, pause_each_move=Fals
             for i in range(len(ais)):
                 ai_games[i].post_move(game.wonders, move, game.hands[i])
 
+    print()
+    print('Final situation:')
     print()
     print(game)
     print()

@@ -64,4 +64,4 @@ moves = {
     ]
 }
 
-run_known_game_routine(ai, ai_i, wonders, starting_hands, moves, pause_each_move=True)
+run_known_game_routine(ai, ai_i, wonders, starting_hands, moves, verbose=True, pause_each_move=True)

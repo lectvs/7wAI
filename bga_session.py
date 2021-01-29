@@ -17,13 +17,15 @@ from random import uniform, choice
 # - Download the Firefox webdriver and add it to your PATH: https://selenium-python.readthedocs.io/installation.html#drivers
 # Steps:
 # - 1. Configure all users to log in in users.py
-# - 2. Run `python bga_session.py`
-# - 3. Navigate to the game on BGA until you are in-game (i.e. you can see your wonder board)
-# - 4. Press enter in console to start the AI
-# - 5. If manual_mode = True, press enter on each turn to perform the action.
+# - 2. Configure manual_mode and ai to your liking
+# - 3. Run `python bga_session.py`
+# - 4. Navigate to the game on BGA until you are in-game (i.e. you can see your wonder board)
+# - 5. Press enter in console to start the AI
+# - 6. If manual_mode is True, press enter on each turn to perform the action.
 
 players = USERS
-manual_mode = True
+manual_mode = False
+ai = FirstAi()
 
 def create_session(player):
     options = webdriver.FirefoxOptions()
@@ -31,7 +33,7 @@ def create_session(player):
     options.add_argument("--height=1000")
     driver = webdriver.Firefox(options=options)
     driver.implicitly_wait(2)
-    return AiSession(driver, player[0], player[1], FirstAi())
+    return AiSession(driver, player[0], player[1], ai)
 
 executor = ThreadPoolExecutor(len(players))
 sessions = list(executor.map(create_session, players))
@@ -41,7 +43,7 @@ for session in sessions:
     session.start_ai()
     session.set_state()
     if session.game_state == CHOOSE_SIDE:
-        session.choose_side(choice(['Day', 'Night']))
+        session.choose_side()
         sleep(0.5)
 
 while any(session.game_state != DONE for session in sessions):

@@ -2,9 +2,6 @@ from collections import namedtuple
 
 from game.base import *
 
-# Everything the AI tracks about a hand as it moves around the table.
-Hand = namedtuple('Hand', ['known_cards'])
-
 # Represents a partially-known game from a single player/AI's perspective.
 # - i: the index of the AI's wonder/hand/etc.
 # - age: the current age of the game (1, 2, 3)
@@ -25,7 +22,7 @@ class AiGame:
 
     # Returns the list of Cards in the AI's current hand.
     def get_ai_hand(self):
-        return self.hands[self.i].known_cards
+        return self.hands[self.i]
 
     # Initializes this game state on entering the game and at the start of each age.
     def initialize(self, age, wonders, cards):
@@ -33,7 +30,7 @@ class AiGame:
         self.wonders = wonders
         self.hands = []
         for i in range(len(self.wonders)):
-            self.hands.append(Hand(cards[:]) if i == self.i else Hand([]))
+            self.hands.append(cards[:] if i == self.i else [])
         self.initialized = True
 
     # Runs after each regular move (non-discard play). Rotates and tracks hands as they move around the board.
@@ -43,24 +40,24 @@ class AiGame:
             hand, selection = self.hands[i], selections[i]
             if not selection:
                 continue
-            if selection.action == 'play' and selection.card in hand.known_cards:
-                hand.known_cards.remove(selection.card)
-            if selection.action in ['wonder', 'throw'] and selection.card in hand.known_cards and i == self.i:
-                hand.known_cards.remove(selection.card)
+            if selection.action == 'play' and selection.card in hand:
+                hand.remove(selection.card)
+            if selection.action in ['wonder', 'throw'] and selection.card in hand and i == self.i:
+                hand.remove(selection.card)
         if len(cards) > 1:
             if self.age % 2 == 0:
                 self.hands.append(self.hands.pop(0))  # Rotate neg in age 2
             else:
                 self.hands.insert(0, self.hands.pop())  # Rotate pos in age 1,3
-        self.hands[self.i] = Hand(cards[:])
+        self.hands[self.i] = cards[:]
 
     # Called before Babylon's last card play to ensure Babylon knows what its last card is.
     def pre_last_card_play(self, wonders, cards):
-        self.hands[self.i] = Hand(cards[:])
+        self.hands[self.i] = cards[:]
 
     # Returns a representation of each wonder, points distribution, and known hands on separate lines.
     def __repr__(self):
         points = [wonder.get_points_str(self.wonders) for wonder in self.wonders]
-        wonders = '\n'.join([f"Wonder: {self.wonders[i]}, Points: {points[i]}, Known Hand: {[card.name for card in self.hands[i].known_cards]}" for i in range(len(self.wonders))])
+        wonders = '\n'.join([f"Wonder: {self.wonders[i]}, Points: {points[i]}, Known Hand: {[card.name for card in self.hands[i]]}" for i in range(len(self.wonders))])
         return f"{wonders}"
         

@@ -20,7 +20,7 @@ class RandomAi:
         if selection.action in ['wonder', 'throw']:
             selection = Selection(choice(cards), selection.action, selection.payment)
         
-        print('AI wants to:', selection)
+        # print('AI wants to:', selection)
 
         return selection
     
@@ -28,16 +28,16 @@ class RandomAi:
         wonder = ai_game.get_ai_wonder()
         possible_cards = [card for card in cards if card not in wonder.played_cards]
 
-        #print([card.name for card in possible_cards])
+        # print([card.name for card in possible_cards])
 
         # Returning None skips the discard play.
         if len(possible_cards) == 0:
-            print(f"No possible cards in the discard: {cards}")
+            # print(f"No possible cards in the discard: {cards}")
             return None
         
         card = choice(possible_cards)
 
-        print('AI wants to play from discard:', card.name)
+        # print('AI wants to play from discard:', card.name)
 
         return card
     

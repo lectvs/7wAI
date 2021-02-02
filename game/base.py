@@ -150,7 +150,7 @@ class Wonder:
         if i < 0:
             raise Exception(f'Wonder {self.name} is not in: {wonders}')
         return (wonders[(i-1) % len(wonders)], wonders[(i+1) % len(wonders)])
-    
+
     # Returns all effects present in this wonder (starting effects and effects from cards and stages).
     def all_effects(self):
         yield from self.starting_effects
@@ -245,7 +245,7 @@ class Wonder:
     # Format: military/gold/raw-points/science/yellow/guild/total
     def get_points_str(self, wonders):
         distr = self.compute_points_distribution(wonders)
-        return f"{distr.get('military', 0)}/{distr.get('gold', 0)}/{distr.get('points', 0)}/{distr.get('science', 0)}/{distr.get('yellow', 0)}/{distr.get('guild', 0)}/{sum(distr.values())}"
+        return f"m{distr.get('military', 0)}/c{distr.get('gold', 0)}/b{distr.get('points', 0)}/s{distr.get('science', 0)}/y{distr.get('yellow', 0)}/g{distr.get('guild', 0)}/T:{sum(distr.values())}"
 
     # Computes the point distribution (as a dict) for points from all sources.
     def compute_points_distribution(self, wonders):
@@ -291,7 +291,7 @@ class Wonder:
             science[s] += 1
             yield from self.science_points_for(science, multi_science[1:])
             science[s] -= 1
-    
+
     # Returns a list of Selections for all possible moves from the given hand.
     # Will include building a wonder stage (if possible) and discarding, but the Selection's card will be None.
     def get_all_possible_selections(self, wonders, hand):
@@ -414,5 +414,5 @@ class Wonder:
     # - resources: the first letter in each resource's name (e.g. stone="s", ore="o"). all multi-resources are "m"
     def __repr__(self):
         resources, multi_resources = self.get_resources()
-        resources_str = ''.join(r[0] for r in resources) + ''.join('m' for m in multi_resources)
+        resources_str = ''.join(r[0] for r in resources) + ''.join(f"[{'|'.join(t[0] for t in m)}]" for m in multi_resources)
         return f"{self.name}{self.side}(gold={self.gold}, res={resources_str})"

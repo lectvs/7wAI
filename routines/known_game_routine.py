@@ -21,12 +21,14 @@ def run_known_game_routine(ai, ai_i, wonders, starting_hands, moves, verbose=Tru
                 print(ai_game)
                 print()
             wonder = ai_game.get_ai_wonder()
+
             if not game.wait_for_last_card_play and game.wait_for_discard_play and wonder.name == 'Halikarnassos':
                 ai.get_build_card_from_discard(ai_game, game.discard_pile)
             elif game.wait_for_last_card_play and wonder.name == 'Babylon':
                 ai.get_selection(ai_game, game.hands[ai_i])
             elif not game.wait_for_discard_play and not game.wait_for_last_card_play:
                 ai.get_selection(ai_game, game.hands[ai_i])
+
             if pause_each_move:
                 if verbose: input()
             else:

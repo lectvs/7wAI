@@ -2,7 +2,7 @@ from routines.known_game_routine import run_known_game_routine
 from game.deck import *
 from game.wonders import *
 from ai.random_ai import RandomAi
-from ai.first_ai import FirstAi
+from ai.scott_ai import ScottAi
 
 # Runs a fixed, predetermined game locally.
 # GAME: https://boardgamearena.com/gamereview?table=135447213
@@ -11,7 +11,7 @@ from ai.first_ai import FirstAi
 # - 2. Run `python fixed_game.py`
 # - 3. Press enter to go to the next move.
 
-ai = FirstAi()
+ai = ScottAi(show_selections=True, verbose=True)
 ai_i = 1
 wonders = [RHODOS_NIGHT(), ALEXANDRIA_NIGHT(), EPHESOS_NIGHT()]
 

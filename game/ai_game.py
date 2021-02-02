@@ -15,6 +15,10 @@ class AiGame:
         self.hands = []
         self.wonders = []
         self.initialized = False
+        self.debuggingMode = ''
+        # '' for no debug output on get_selection
+        # 'terse' for simple card/score debug output on get_selection
+        # 'verbose' for full reasoning data debug output on get_selection
 
     # Returns the Wonder controlled by the AI.
     def get_ai_wonder(self):
@@ -23,6 +27,12 @@ class AiGame:
     # Returns the list of Cards in the AI's current hand.
     def get_ai_hand(self):
         return self.hands[self.i]
+
+    def get_pass_to_neighbor(self):
+        if self.age == 2:
+            return self.wonders[(self.i - 1) % len(self.wonders)]
+        else:
+            return self.wonders[(self.i + 1) % len(self.wonders)]
 
     # Initializes this game state on entering the game and at the start of each age.
     def initialize(self, age, wonders, cards):
@@ -58,6 +68,5 @@ class AiGame:
     # Returns a representation of each wonder, points distribution, and known hands on separate lines.
     def __repr__(self):
         points = [wonder.get_points_str(self.wonders) for wonder in self.wonders]
-        wonders = '\n'.join([f"Wonder: {self.wonders[i]}, Points: {points[i]}, Known Hand: {[card.name for card in self.hands[i]]}" for i in range(len(self.wonders))])
+        wonders = '\n'.join([f"Wonder: {self.wonders[i]}\n    Points: {points[i]}\n    Known Hand: {[card.name for card in self.hands[i]]}" for i in range(len(self.wonders))])
         return f"{wonders}"
-        

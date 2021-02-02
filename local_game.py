@@ -2,6 +2,7 @@ from routines.ai_local_game_routine import run_ai_local_game_routine
 from game.deck import *
 from game.wonders import *
 from ai.random_ai import RandomAi
+from ai.scott_ai import ScottAi
 
 # Runs a local game where AIs make all the decisions.
 # Steps:
@@ -9,7 +10,7 @@ from ai.random_ai import RandomAi
 # - 2. Run `python local_game.py`
 # - 3. Press enter to go to the next move.
 
-ais = [RandomAi(), RandomAi(), RandomAi()]
+ais = [RandomAi(), RandomAi(), ScottAi(show_selections=True, verbose=True)]
 wonders = [RHODOS_NIGHT(), HALIKARNASSOS_DAY(), BABYLON_NIGHT()]
 
 starting_hands = {

@@ -29,7 +29,7 @@ BARRACKS = Card('Barracks', 'red', cost(ore=1), [Effect('shields', '', 1)], [])
 GUARD_TOWER = Card('Guard Tower', 'red', cost(clay=1), [Effect('shields', '', 1)], [])
 APOTHECARY = Card('Apothecary', 'green', cost(loom=1), [Effect('science', 'compass', 1)], ['horseshoe', 'bowl'])
 WORKSHOP = Card('Workshop', 'green', cost(glass=1), [Effect('science', 'gear', 1)], ['target', 'lamp'])
-SCRIPTORIM = Card('Scriptorium', 'green', cost(press=1), [Effect('science', 'tablet', 1)], ['scales', 'book'])
+SCRIPTORIUM = Card('Scriptorium', 'green', cost(press=1), [Effect('science', 'tablet', 1)], ['scales', 'book'])
 
 # AGE 2
 SAWMILL = Card('Sawmill', 'brown', cost(gold=1), [Effect('resource', 'wood', 1), Effect('resource', 'wood', 1)], [])
@@ -95,7 +95,7 @@ def get_cards_for_players_age(players, age):
             BATHS, ALTAR, THEATER,
             MARKETPLACE, WEST_TRADING_POST, EAST_TRADING_POST,
             STOCKADE, BARRACKS, GUARD_TOWER,
-            APOTHECARY, WORKSHOP, SCRIPTORIM
+            APOTHECARY, WORKSHOP, SCRIPTORIUM
         ]
         if players >= 4:
             cards.extend([
@@ -103,7 +103,7 @@ def get_cards_for_players_age(players, age):
                 PAWNSHOP,
                 TAVERN,
                 GUARD_TOWER,
-                SCRIPTORIM
+                SCRIPTORIUM
             ])
         if players >= 5:
             cards.extend([
@@ -205,6 +205,7 @@ def get_cards_for_players_age(players, age):
         cards = []
     return cards
 
+
 # Gets a card by its name.
 def get_card_by_name(name):
     for age in [1, 2, 3]:
@@ -212,4 +213,4 @@ def get_card_by_name(name):
             if card.name == name:
                 return card
     return None
-    
+

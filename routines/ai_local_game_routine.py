@@ -14,7 +14,7 @@ def print_pause(game, pause_each_move):
         print()
 
 # Runs a full local game using the input AIs and starting hands. Optional parameter to pause on each move.
-def run_ai_local_game_routine(ais, wonders, starting_hands, verbose=True, pause_each_move=False):
+def run_ai_local_game_routine(ais, wonders, starting_hands, silent=False, verbose=True, pause_each_move=False):
     game = KnownGame(wonders, verbose)
     ai_games = [AiGame(i) for i in range(len(ais))]
 
@@ -51,9 +51,11 @@ def run_ai_local_game_routine(ais, wonders, starting_hands, verbose=True, pause_
             for i in range(len(ais)):
                 ai_games[i].post_move(game.wonders, move, game.hands[i])
 
-    print()
-    print('Final situation:')
-    print()
-    print(game)
-    print()
+    if not silent:
+        print()
+        print('Final situation:')
+        print()
+        print(game)
+        print()
+
     return game

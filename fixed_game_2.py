@@ -17,7 +17,7 @@ wonders = [BABYLON_NIGHT(), HALIKARNASSOS_NIGHT(), EPHESOS_NIGHT()]
 
 starting_hands = {
     1: [
-        [ALTAR, MARKETPLACE, EAST_TRADING_POST, WEST_TRADING_POST, STOCKADE, GUARD_TOWER, SCRIPTORIM],
+        [ALTAR, MARKETPLACE, EAST_TRADING_POST, WEST_TRADING_POST, STOCKADE, GUARD_TOWER, SCRIPTORIUM],
         [CLAY_POOL, ORE_VEIN, TIMBER_YARD, LOOM, BATHS, THEATER, APOTHECARY],
         [LUMBER_YARD, STONE_PIT, CLAY_PIT, GLASSWORKS, PRESS, BARRACKS, WORKSHOP]
     ],
@@ -36,7 +36,7 @@ starting_hands = {
 moves = {
     1: [
         [Selection(MARKETPLACE, 'play', None), Selection(TIMBER_YARD, 'play', Payment(0, 1, 0)), Selection(STONE_PIT, 'play', None)],
-        [Selection(CLAY_PIT, 'play', Payment(0, 1, 0)), Selection(SCRIPTORIM, 'play', Payment(0, 0, 2)), Selection(BATHS, 'play', None)],
+        [Selection(CLAY_PIT, 'play', Payment(0, 1, 0)), Selection(SCRIPTORIUM, 'play', Payment(0, 0, 2)), Selection(BATHS, 'play', None)],
         [Selection(APOTHECARY, 'play', Payment(0, 0, 1)), Selection(WORKSHOP, 'throw', None), Selection(WEST_TRADING_POST, 'play', None)],
         [Selection(STOCKADE, 'play', None), Selection(CLAY_POOL, 'play', None), Selection(LUMBER_YARD, 'play', None)],
         [Selection(BARRACKS, 'play', None), Selection(GUARD_TOWER, 'play', None), Selection(ORE_VEIN, 'wonder', Payment(1, 0, 0))],

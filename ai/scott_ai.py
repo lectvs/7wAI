@@ -1,9 +1,21 @@
-from game.deck import *
+from game.wonders import *
 from game.base import *
+import json
+import os
+import copy
 
-from random import choice
+from random import choice, randint, uniform, shuffle
 from collections import namedtuple
 
+ALL_WONDERS = [
+    GIZA_DAY, GIZA_NIGHT,
+    EPHESOS_DAY, EPHESOS_NIGHT,
+    RHODOS_DAY, RHODOS_NIGHT,
+    ALEXANDRIA_DAY, ALEXANDRIA_NIGHT,
+    OLYMPIA_DAY, OLYMPIA_NIGHT,
+    BABYLON_DAY, BABYLON_NIGHT,
+    HALIKARNASSOS_DAY, HALIKARNASSOS_NIGHT
+]
 # Use this as a template to construct your AI!
 # Currently this AI greedily picks the card/wonder that gives it the most points.
 #
@@ -32,15 +44,15 @@ from collections import namedtuple
 # - Total shield count                  : wonder.get_shields() -> number
 # - Has a specific chain                : wonder.has_chain(chain) -> bool
 
-AgeAiVar = namedtuple('AgeAiVar', ['default_value', 'mutation_profile'])
+AgeAiVar = namedtuple('AgeAiVar', ['age', 'default_value', 'mutation_profile'])
 
 
 class AiVar:
     def __init__(self, default_arr, mutation_profile):
         self.ages = [
-            AgeAiVar(default_arr[0], mutation_profile),
-            AgeAiVar(default_arr[1], mutation_profile),
-            AgeAiVar(default_arr[2], mutation_profile),
+            AgeAiVar(1, default_arr[0], mutation_profile),
+            AgeAiVar(2, default_arr[1], mutation_profile),
+            AgeAiVar(3, default_arr[2], mutation_profile),
         ]
 
     def __str__(self):
@@ -52,6 +64,23 @@ class AiVar:
             return eval(agv, {"a1": self.ages[0].default_value, "a2": self.ages[1].default_value, "a3": self.ages[2].default_value})
         else:
             return agv
+
+    def clamp_value(self, value):
+        min_allowed = self.ages[0].mutation_profile[2]
+        max_allowed = self.ages[0].mutation_profile[3]
+
+        return min(max_allowed, max(min_allowed, value))
+
+    def mutate_from(self, curr_value):
+        # slow is 4% while normal is 10%
+        min_allowed = self.ages[0].mutation_profile[2]
+        max_allowed = self.ages[0].mutation_profile[3]
+        max_delta = 0.04 if self.ages[0].mutation_profile[1] == 'slow' else 0.1
+        max_change = max_delta * (max_allowed - min_allowed)
+        low = max(min_allowed, curr_value - max_change)
+        high = min(max_allowed, curr_value + max_change)
+
+        return uniform(low, high)
 
 
 # mutability
@@ -86,6 +115,7 @@ class CardSituation(CardSituation):
 # AI coefficients for each board/side
 wonder_coefficients = {
     "#default": {
+        "generation": 0,
         # declares importance of burying stage for each age
         "stage1_w":     AiVar([1,   2,     3], ['rare', 'normal', 0, 3]),
         "stage2_w":     AiVar([0.5, 1,     2], ['rare', 'normal', 0, 2]),
@@ -98,59 +128,70 @@ wonder_coefficients = {
         "unlock_stage_w":   AiVar([1, 1,   1], ['normal', 'normal', 0, 3]),
         "cheapen_brown_w":  AiVar([1, 1, 1],   ['normal', 'normal', 0, 3]),
         "cheapen_gray_w":   AiVar([1, 1, 1],   ['normal', 'normal', 0, 3]),
-        "chain_ws": {
-            "hammer":       AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "waterdrop":    AiVar([1.1, 1.1, 1.1], ['rare', 'normal', 0, 3]),
-            "star":         AiVar([1.2, 1.2, 1.2], ['rare', 'normal', 0, 3]),
-            "mask":         AiVar([1.1, 1.1, 1.1], ['rare', 'normal', 0, 3]),
-            "camel":        AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "market":       AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "horseshoe":    AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "bowl":         AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "target":       AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "lamp":         AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "scales":       AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "book":         AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "lighthouse":   AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "barrel":       AiVar([0.9, 0.9, 0.9], ['rare', 'normal', 0, 3]),
-            "castle":       AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "helmet":       AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "bolt":         AiVar([0.9, 0.9, 0.9], ['rare', 'normal', 0, 3]),
-            "torch":        AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "saw":          AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "planets":      AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "temple":       AiVar([1.15, 1.15, 1.15], ['rare', 'normal', 0, 3]),
-            "scroll":       AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "harp":         AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-            "feather":      AiVar([1, 1, 1], ['rare', 'normal', 0, 3]),
-        },
-        "military_sit_ws": {
-            "down2+": AiVar([1, 1, 1],  ['normal', 'normal', 0, 3]),
-            "down1":  AiVar([1, 1, 1],  ['normal', 'normal', 0, 3]),
-            "tied":   AiVar([1, 1, 1],  ['normal', 'normal', 0, 3]),
-            "up1":    AiVar([1, 1, 1],  ['normal', 'normal', 0, 3]),
-            "up2+":   AiVar([1, 1, 1],  ['normal', 'normal', 0, 3])
-        },
+        "chain_ws_hammer":       AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_waterdrop":    AiVar([1.1, 1.1, 1.1], ['normal', 'normal', 0, 3]),
+        "chain_ws_star":         AiVar([1.2, 1.2, 1.2], ['normal', 'normal', 0, 3]),
+        "chain_ws_mask":         AiVar([1.1, 1.1, 1.1], ['normal', 'normal', 0, 3]),
+        "chain_ws_camel":        AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_market":       AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_horseshoe":    AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_bowl":         AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_target":       AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_lamp":         AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_scales":       AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_book":         AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_lighthouse":   AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_barrel":       AiVar([0.9, 0.9, 0.9], ['normal', 'normal', 0, 3]),
+        "chain_ws_castle":       AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_helmet":       AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_bolt":         AiVar([0.9, 0.9, 0.9], ['normal', 'normal', 0, 3]),
+        "chain_ws_torch":        AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_saw":          AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_planets":      AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_temple":       AiVar([1.15, 1.15, 1.15], ['normal', 'normal', 0, 3]),
+        "chain_ws_scroll":       AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_harp":         AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "chain_ws_feather":      AiVar([1, 1, 1], ['normal', 'normal', 0, 3]),
+        "military_sit_ws_down2+": AiVar([1, 1, 1],  ['normal', 'normal', 0, 3]),
+        "military_sit_ws_down1":  AiVar([1, 1, 1],  ['normal', 'normal', 0, 3]),
+        "military_sit_ws_tied":   AiVar([1, 1, 1],  ['normal', 'normal', 0, 3]),
+        "military_sit_ws_up1":    AiVar([1, 1, 1],  ['normal', 'normal', 0, 3]),
+        "military_sit_ws_up2+":   AiVar([1, 1, 1],  ['normal', 'normal', 0, 3]),
 
         # target resource amounts per age
-        "wood_t":       AiVar([2.2, 3,  'a2'], ['rare', 'normal', 0, 3]),
-        "ore_t":        AiVar([1,   3,  'a2'], ['rare', 'normal', 0, 3]),
-        "clay_t":       AiVar([2.1, 3,  'a2'], ['rare', 'normal', 0, 3]),
-        "stone_t":      AiVar([2,   4,  'a2'], ['rare', 'normal', 0, 4]),
-        "loom_t":       AiVar([1.1, 1,     1], ['none', 'normal', 1, 1]),
-        "press_t":      AiVar([1,   1,     1], ['none', 'normal', 1, 1]),
-        "glass_t":      AiVar([1,   1,     1], ['none', 'normal', 1, 1]),
+        "wood_t":           AiVar([2.2, 3,  'a2'], ['rare', 'normal', 0, 3]),
+        "ore_t":            AiVar([1,   3,  'a2'], ['rare', 'normal', 0, 3]),
+        "clay_t":           AiVar([2.1, 3,  'a2'], ['rare', 'normal', 0, 3]),
+        "stone_t":          AiVar([2,   4,  'a2'], ['rare', 'normal', 0, 4]),
+        "loom_t":           AiVar([1.1, 1,     1], ['none', 'normal', 1, 1]),
+        "press_t":          AiVar([1,   1,     1], ['none', 'normal', 1, 1]),
+        "glass_t":          AiVar([1,   1,     1], ['none', 'normal', 1, 1]),
 
-        "resource_c":   AiVar([2,   1.5,     1], ['normal', 'normal', 0, 3]),
-        "points_c":     AiVar([0.5,   1,     1.5], ['normal', 'normal', 0, 3]),
-        "coin_add_0_c": AiVar([0.5,   1,     1], ['normal', 'normal', 0, 3]),     # adding coin when at 0
-        "coin_add_c":   AiVar([0.25,   0.25,     0.25], ['normal', 'normal', 0, 3]),
+        "resource_c":       AiVar([2,   1.5,     1], ['normal', 'normal', 0, 3]),
+        "points_c":         AiVar([0.5,   1,     1.5], ['normal', 'normal', 0, 3]),
+        "coin_add_0_c":     AiVar([0.5,   1,     1], ['normal', 'normal', 0, 3]),     # adding coin when at 0
+        "coin_add_c":       AiVar([0.25,   0.25,     0.25], ['normal', 'normal', 0, 3]),
         "coin_spend_c":     AiVar([-0.25, -0.25, -0.25], ['normal', 'normal', -2, 3]),
         "coin_spend_0_c":   AiVar([-0.75, -0.75, -0.75], ['normal', 'normal', -2, 3]),
         "military_c":       AiVar([1,   1,     1], ['normal', 'normal', 0, 3]),
         "chain_c":          AiVar([1,   1,   '0'], ['normal', 'normal', 0, 3]),
     }
 }
+
+MutateGene = namedtuple('MutateGene', ['name', 'pick_weight', 'age', 'ai_var'])
+mutate_genes = []
+max_pick_weight = 0
+
+for i, (k, v) in enumerate(wonder_coefficients["#default"].items()):
+    if isinstance(v, AiVar):
+        for age in v.ages:
+            if not isinstance(age.default_value, str) and age.mutation_profile[0] != 'none':
+                pick_weight = 10  # assume rare
+                if age.mutation_profile[0] == 'normal':
+                    pick_weight = 100
+
+                max_pick_weight += pick_weight
+                mutate_genes.append(MutateGene(k, max_pick_weight, age.age, v))
 
 
 # Compute the point gain of the move.
@@ -176,21 +217,23 @@ def expand_ai_vars(src, dest, age):
     for key in src:
         if isinstance(src[key], AiVar):
             dest[key] = src[key].get_age_value(age)
+        elif isinstance(src[key], int) or isinstance(src[key], str):
+            dest[key] = src[key]
         else:
             dest[key] = expand_ai_vars(src[key], {}, age)
     return dest
 
 
-def get_shield_w(shields_per_age, delta, military_sit_ws):
+def get_shield_w(shields_per_age, delta, coefficients):
     if delta < (-shields_per_age):
-        return military_sit_ws["down2+"]
+        return coefficients["military_sit_ws_down2+"]
     if delta < 0:
-        return military_sit_ws["down1"]
+        return coefficients["military_sit_ws_down1"]
     if delta > shields_per_age:
-        return military_sit_ws["up2+"]
+        return coefficients["military_sit_ws_up2+"]
     if delta > 0:
-        return military_sit_ws["up1"]
-    return military_sit_ws["tied"]
+        return coefficients["military_sit_ws_up1"]
+    return coefficients["military_sit_ws_tied"]
 
 
 def calc_score_from_sit_vars(coefficients, sit_vars):
@@ -311,6 +354,7 @@ def create_sit_vars():
         "bury_stage_payment": None
     }
 
+
 class ScottAi:
     def __init__(self, show_selections=False, verbose=False):
         self.show_selections = show_selections
@@ -319,17 +363,29 @@ class ScottAi:
         for board_name in wonder_coefficients:
             board = wonder_coefficients[board_name]
 
-            self.coefficients[board_name] = [
+            card_coefs = [
                 expand_ai_vars(board, {}, 0),
                 expand_ai_vars(board, {}, 1),
                 expand_ai_vars(board, {}, 2)]
+            self.coefficients[board_name] = {
+                "player_3": card_coefs,
+                "player_4": copy.deepcopy(card_coefs),
+                "player_5": copy.deepcopy(card_coefs)
+            }
+
+        for wonder_class in ALL_WONDERS:
+            wonder = wonder_class()
+            hash_name = f"{wonder.name}_{wonder.side}"
+            if hash_name not in self.coefficients:
+                self.coefficients[hash_name] = copy.deepcopy(self.coefficients["#default"])
 
     def get_coefficients(self, wonder, ai_game):
         hash_name = f"{wonder.name}_{wonder.side}"
+        player_count = f"player_{min(5, max(3, len(ai_game.wonders)))}"
 
         if hash_name in self.coefficients:
-            return self.coefficients[hash_name][ai_game.age - 1]
-        return self.coefficients["#default"][ai_game.age - 1]
+            return self.coefficients[hash_name][player_count][ai_game.age - 1]
+        return self.coefficients["#default"][player_count][ai_game.age - 1]
 
     # when burying, deprive enemies of their cards
     def get_best_bury_card(self, ai_game, cards):
@@ -345,8 +401,6 @@ class ScottAi:
         right_neighbor, left_neighbor = wonder.get_neighbors(wonders)
         # passing_to = ai_game.get_pass_to_neighbor()
         coefficients = self.get_coefficients(wonder, ai_game)
-        chain_ws = coefficients["chain_ws"]
-        military_sit_ws = coefficients["military_sit_ws"]
 
         if next_stage:
             bury_stage_payment = wonder.get_min_gold_payment(wonders, cards, Selection(None, 'wonder', None))
@@ -397,12 +451,12 @@ class ScottAi:
 
             calc_before_after_sit_vars(wonders, coefficients, wonder, wonder_next, sit_vars)
             for chain in card.chains:
-                sit_vars["chain_w"] += chain_ws[chain]
+                sit_vars["chain_w"] += coefficients[f"chain_ws_{chain}"]
 
             if card.color == 'red':  # do military situation vars
                 new_shields = wonder_next.get_shields()
-                sit_vars["military_l_w"] += get_shield_w(shields_per_age, new_shields - left_shields, military_sit_ws)
-                sit_vars["military_r_w"] += get_shield_w(shields_per_age, new_shields - right_shields, military_sit_ws)
+                sit_vars["military_l_w"] += get_shield_w(shields_per_age, new_shields - left_shields, coefficients)
+                sit_vars["military_r_w"] += get_shield_w(shields_per_age, new_shields - right_shields, coefficients)
 
             if card.color == 'green':  # do science
                 sit_vars["science_w"] = coefficients["science_w"]
@@ -488,3 +542,74 @@ class ScottAi:
         if my_wonder_name in ['Alexandria', 'Ephesos']:
             return 'Night'
         return 'Day'
+
+    def write_coefficients(self, file):
+        with open(file, "w") as outfile:
+            json.dump(self.coefficients, outfile)
+
+    def read_coefficients(self, file):
+        if os.path.isfile(file):
+            with open(file) as json_file:
+                self.coefficients = json.load(json_file)
+
+    def copy_coefficients(self):
+        return copy.deepcopy(self.coefficients)
+
+    def restore_coefficients(self, coefficients):
+        self.coefficients = copy.deepcopy(coefficients)
+
+    def pick_mutate_genes(self):
+        genes = []
+        indexes = [randint(0, max_pick_weight) for _ in range(25)]
+        indexes.sort()
+
+        for gene in mutate_genes:
+            idx = indexes[0] if len(indexes) > 0 else 999999999999
+            if gene.pick_weight > idx:
+                genes.append(gene)
+                while len(indexes) > 0 and indexes[0] < gene.pick_weight:
+                    indexes.pop(0)
+
+        shuffle(genes)
+        return genes
+
+    # MutateGene = namedtuple('MutateGene', ['name', 'pick_weight', 'age', 'ai_var'])
+    def remutate_coefficients(self, board_name, player_count, parent_coefficients):
+        pc_hash = f"player_{min(5, max(3, player_count))}"
+        coef_base = self.coefficients[board_name][pc_hash]
+
+        for gene in mutate_genes:
+            old_val = parent_coefficients[board_name][pc_hash][gene.age-1][gene.name]
+            new_val = coef_base[gene.age-1][gene.name]
+            if old_val != new_val:
+                next_val = gene.ai_var.clamp_value(new_val + (new_val - old_val))
+                coef_base[gene.age-1][gene.name] = next_val
+                # print(f"remutating {gene.name}[{gene.age}]: {new_val} -> {next_val}")
+
+    def mutate_coefficients(self, board_name, player_count):
+        pc_hash = f"player_{min(5, max(3, player_count))}"
+        mutations = randint(1, 4)
+        tries = 0
+        genes = self.pick_mutate_genes()
+        coef_base = self.coefficients[board_name][pc_hash]
+
+        while mutations > 0 and len(genes) > 0:
+            mutate_gene = genes.pop(0)
+            old = coef_base[mutate_gene.age-1][mutate_gene.name]
+            new = mutate_gene.ai_var.mutate_from(old)
+            coef_base[mutate_gene.age-1][mutate_gene.name] = new
+            # print(f"mutating {mutate_gene.name}[{mutate_gene.age}]: {old} -> {new}")
+            mutations -= 1
+
+    def show_mutations(self, board_name, player_count, parent_coefficients):
+        CRED = '\033[91m'
+        CEND = '\033[0m'
+        pc_hash = f"player_{min(5, max(3, player_count))}"
+        coef_base = self.coefficients[board_name][pc_hash]
+
+        for gene in mutate_genes:
+            old_val = parent_coefficients[board_name][pc_hash][gene.age-1][gene.name]
+            new_val = coef_base[gene.age-1][gene.name]
+            if old_val != new_val:
+                print(CRED + f"Mutated {gene.name}[{gene.age}]: {old_val} -> {new_val}" + CEND)
+

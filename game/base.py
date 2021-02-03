@@ -87,13 +87,21 @@ class Wonder:
         self.name = name
         self.side = side
         self.starting_effects = starting_effects
+        self.starting_gold = starting_gold
         self.stages = stages
         self.stages_built = 0
 
         self.gold = starting_gold
         self.military_tokens = []
         self.played_cards = []
-    
+
+    def reset(self):
+        self.stages_built = 0
+
+        self.gold = self.starting_gold
+        self.military_tokens = []
+        self.played_cards = []
+
     # Returns a new Wonder with the specified selection played and all immediate effects applied.
     def with_simulated_selection(self, wonders, selection):
         new_wonder = Wonder(self.name, self.side, self.gold, self.starting_effects, self.stages)

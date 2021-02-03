@@ -19,7 +19,7 @@ starting_hands = {
     1: [
         [LUMBER_YARD, ORE_VEIN, TIMBER_YARD, GLASSWORKS, PRESS, ALTAR, MARKETPLACE],
         [CLAY_POOL, CLAY_PIT, EAST_TRADING_POST, WEST_TRADING_POST, STOCKADE, BARRACKS, APOTHECARY],
-        [STONE_PIT, LOOM, BATHS, THEATER, GUARD_TOWER, WORKSHOP, SCRIPTORIM]
+        [STONE_PIT, LOOM, BATHS, THEATER, GUARD_TOWER, WORKSHOP, SCRIPTORIUM]
     ],
     2: [
         [BRICKYARD, FORUM, VINEYARD, AQUEDUCT, DISPENSARY, LIBRARY, SCHOOL],
@@ -38,7 +38,7 @@ moves = {
         [Selection(TIMBER_YARD, 'play', Payment(0, 1, 0)), Selection(CLAY_PIT, 'play', Payment(0, 1, 0)), Selection(STONE_PIT, 'play', None)],
         [Selection(BATHS, 'play', None), Selection(ALTAR, 'play', None), Selection(EAST_TRADING_POST, 'play', None)],
         [Selection(BARRACKS, 'play', None), Selection(WORKSHOP, 'play', None), Selection(MARKETPLACE, 'play', None)],
-        [Selection(LUMBER_YARD, 'play', None), Selection(CLAY_POOL, 'play', None), Selection(SCRIPTORIM, 'play', None)],
+        [Selection(LUMBER_YARD, 'play', None), Selection(CLAY_POOL, 'play', None), Selection(SCRIPTORIUM, 'play', None)],
         [Selection(THEATER, 'play', None), Selection(ORE_VEIN, 'play', None), Selection(STOCKADE, 'play', Payment(0, 0, 1))],
         [Selection(WEST_TRADING_POST, 'play', None), Selection(GUARD_TOWER, 'play', None), Selection(GLASSWORKS, 'wonder', Payment(0, 0, 1))]
     ],

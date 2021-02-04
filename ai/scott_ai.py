@@ -82,6 +82,8 @@ class AiVar:
 
         return uniform(low, high)
 
+    def huge_mutate_from(self):
+        return uniform(self.ages[0].mutation_profile[2], self.ages[0].mutation_profile[3])
 
 # mutability
 MUTABILITY_NONE = 0
@@ -192,6 +194,22 @@ for i, (k, v) in enumerate(wonder_coefficients["#default"].items()):
 
                 max_pick_weight += pick_weight
                 mutate_genes.append(MutateGene(k, max_pick_weight, age.age, v))
+
+
+def pick_mutate_genes():
+    genes = []
+    indexes = [randint(0, max_pick_weight) for _ in range(25)]
+    indexes.sort()
+
+    for gene in mutate_genes:
+        idx = indexes[0] if len(indexes) > 0 else 999999999999
+        if gene.pick_weight > idx:
+            genes.append(gene)
+            while len(indexes) > 0 and indexes[0] < gene.pick_weight:
+                indexes.pop(0)
+
+    shuffle(genes)
+    return genes
 
 
 # Compute the point gain of the move.
@@ -556,27 +574,14 @@ class ScottAi:
         return copy.deepcopy(self.coefficients)
 
     def restore_coefficients(self, coefficients):
-        self.coefficients = copy.deepcopy(coefficients)
-
-    def pick_mutate_genes(self):
-        genes = []
-        indexes = [randint(0, max_pick_weight) for _ in range(25)]
-        indexes.sort()
-
-        for gene in mutate_genes:
-            idx = indexes[0] if len(indexes) > 0 else 999999999999
-            if gene.pick_weight > idx:
-                genes.append(gene)
-                while len(indexes) > 0 and indexes[0] < gene.pick_weight:
-                    indexes.pop(0)
-
-        shuffle(genes)
-        return genes
+        self.coefficients = coefficients
 
     # MutateGene = namedtuple('MutateGene', ['name', 'pick_weight', 'age', 'ai_var'])
     def remutate_coefficients(self, board_name, player_count, parent_coefficients):
         pc_hash = f"player_{min(5, max(3, player_count))}"
-        coef_base = self.coefficients[board_name][pc_hash]
+        new_coefs = copy.deepcopy(self.coefficients)
+
+        coef_base = new_coefs[board_name][pc_hash]
 
         for gene in mutate_genes:
             old_val = parent_coefficients[board_name][pc_hash][gene.age-1][gene.name]
@@ -584,32 +589,88 @@ class ScottAi:
             if old_val != new_val:
                 next_val = gene.ai_var.clamp_value(new_val + (new_val - old_val))
                 coef_base[gene.age-1][gene.name] = next_val
+                coef_base[gene.age-1]["generation"] += 1
+
                 # print(f"remutating {gene.name}[{gene.age}]: {new_val} -> {next_val}")
+
+        return new_coefs
 
     def mutate_coefficients(self, board_name, player_count):
         pc_hash = f"player_{min(5, max(3, player_count))}"
-        mutations = randint(1, 4)
-        tries = 0
-        genes = self.pick_mutate_genes()
-        coef_base = self.coefficients[board_name][pc_hash]
+        mutations = randint(4, 8)
+        genes = pick_mutate_genes()
+
+        new_coefs = copy.deepcopy(self.coefficients)
+        coef_base = new_coefs[board_name][pc_hash]
 
         while mutations > 0 and len(genes) > 0:
             mutate_gene = genes.pop(0)
             old = coef_base[mutate_gene.age-1][mutate_gene.name]
             new = mutate_gene.ai_var.mutate_from(old)
             coef_base[mutate_gene.age-1][mutate_gene.name] = new
+            coef_base[mutate_gene.age - 1]["generation"] += 1
             # print(f"mutating {mutate_gene.name}[{mutate_gene.age}]: {old} -> {new}")
             mutations -= 1
 
-    def show_mutations(self, board_name, player_count, parent_coefficients):
+        return new_coefs
+
+    def mutate_coefficients_huge(self, board_name, player_count):
+        pc_hash = f"player_{min(5, max(3, player_count))}"
+        mutations = randint(8, 16)
+        genes = pick_mutate_genes()
+
+        new_coefs = copy.deepcopy(self.coefficients)
+        coef_base = new_coefs[board_name][pc_hash]
+
+        while mutations > 0 and len(genes) > 0:
+            mutate_gene = genes.pop(0)
+            old = coef_base[mutate_gene.age-1][mutate_gene.name]
+            new = mutate_gene.ai_var.huge_mutate_from()
+            coef_base[mutate_gene.age-1][mutate_gene.name] = new
+            coef_base[mutate_gene.age - 1]["generation"] += 1
+            # print(f"mutating {mutate_gene.name}[{mutate_gene.age}]: {old} -> {new}")
+            mutations -= 1
+
+        return new_coefs
+
+    def show_mutations(self, board_name, player_count, parent_coefficients, new_coefficients):
         CRED = '\033[91m'
         CEND = '\033[0m'
         pc_hash = f"player_{min(5, max(3, player_count))}"
-        coef_base = self.coefficients[board_name][pc_hash]
+        coef_base = new_coefficients[board_name][pc_hash]
 
         for gene in mutate_genes:
             old_val = parent_coefficients[board_name][pc_hash][gene.age-1][gene.name]
             new_val = coef_base[gene.age-1][gene.name]
             if old_val != new_val:
                 print(CRED + f"Mutated {gene.name}[{gene.age}]: {old_val} -> {new_val}" + CEND)
+
+    def show_all_mutations(self, parent_coefficients, new_coefficients):
+        for i, (board_name, v) in enumerate(new_coefficients.items()):
+            if board_name != '#default':
+                for player_count in range(3, 6):
+                    pc_hash = f"player_{min(5, max(3, player_count))}"
+                    coef_base = new_coefficients[board_name][pc_hash]
+
+                    print(f"{board_name}@{pc_hash} generations ({coef_base[0]['generation']}, {coef_base[1]['generation']}, {coef_base[2]['generation']})")
+                    for gene in mutate_genes:
+                        old_val = parent_coefficients[board_name][pc_hash][gene.age - 1][gene.name]
+                        new_val = coef_base[gene.age - 1][gene.name]
+                        if old_val != new_val:
+                            print(f"    {gene.name}[{gene.age}]: {old_val} -> {new_val}")
+
+
+    def show_all_mutation_generations(self, coefficients):
+        CGREY = '\033[90m'
+        CEND = '\033[0m'
+        for i, (board_name, v) in enumerate(coefficients.items()):
+            if board_name != '#default':
+                for player_count in range(3, 6):
+                    pc_hash = f"player_{min(5, max(3, player_count))}"
+                    coef_base = coefficients[board_name][pc_hash]
+
+                    if coef_base[0]['generation'] > 0:
+                        print(f"{board_name}@{pc_hash} generations ({coef_base[0]['generation']}, {coef_base[1]['generation']}, {coef_base[2]['generation']})")
+                    else:
+                        print(CGREY + f"{board_name}@{pc_hash} generations ({coef_base[0]['generation']}, {coef_base[1]['generation']}, {coef_base[2]['generation']})" + CEND)
 

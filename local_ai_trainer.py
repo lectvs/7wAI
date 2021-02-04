@@ -6,8 +6,9 @@ from game.deck import *
 from game.wonders import *
 import time
 import sys
+import json
 import os.path
-from random import shuffle, sample
+from random import shuffle, choice
 
 COEF_BASE_FILE = "coef_base.json"
 COEF_TRAIN_FILE = "coef_train.json"
@@ -34,7 +35,7 @@ CEND = '\033[0m'
 
 ais = [ScottAi(), ScottAi(), ScottAi(), ScottAi(), ScottAi()]
 num_deck_sets_to_use = 50
-num_games_per_run = 10
+num_games_per_run = 50
 
 player_count = len(ais)
 wonders = []
@@ -46,9 +47,14 @@ if len(sys.argv) == 1:
     print(f"  make_base_coef - makes the {COEF_BASE_FILE} file with starting coefficients")
     exit(0)
 
-def prepare_for_run():
+def create_wonders_and_hands():
     global wonders, deck_sets
     wonders = get_random_wonders(player_count)
+    # to train a specific wonder:
+    # GIZA_DAY, GIZA_NIGHT,EPHESOS_DAY, EPHESOS_NIGHT,RHODOS_DAY, RHODOS_NIGHT,ALEXANDRIA_DAY, ALEXANDRIA_NIGHT
+    # OLYMPIA_DAY, OLYMPIA_NIGHT,BABYLON_DAY, BABYLON_NIGHT,HALIKARNASSOS_DAY, HALIKARNASSOS_NIGHT
+    # wonders[0] = EPHESOS_DAY()  # choice([OLYMPIA_NIGHT(), EPHESOS_DAY(), OLYMPIA_DAY(), RHODOS_DAY()])
+
     deck_sets = []
     for i in range(num_deck_sets_to_use):
         deck1 = get_cards_for_players_age(player_count, 1)
@@ -77,21 +83,27 @@ def build_starting_hands(run_index):
 
 def run_command():
     cmd = sys.argv[1]
-    if cmd == 'make_base_coef':
-        make_base_coef_file()
+    if cmd == 'promote_coefs':
+        promote_coefs()
     elif cmd == 'mutate':
         run_mutate()
+    elif cmd == 'show_training_results':
+        show_training_results()
     elif cmd == 'train':
         run_training()
 
 
-def make_base_coef_file():
-    if os.path.isfile(COEF_BASE_FILE):
-        print(CRED + f"{COEF_BASE_FILE} already exists!" + CEND)
+def promote_coefs():
+    ai = ais[0]
+    if not os.path.isfile(COEF_TRAIN_FILE):
+        print(CRED + f"{COEF_TRAIN_FILE} does not exist!" + CEND)
     else:
-        ai = ScottAi()
-        ai.write_coefficients(COEF_BASE_FILE)
-        print(f"{COEF_BASE_FILE} written")
+        with open(COEF_TRAIN_FILE) as json_file:
+            coefficients = json.load(json_file)
+            for i, (board_name, v) in enumerate(coefficients.items()):
+                coefficients[board_name]["player_4"] = coefficients[board_name]["player_5"].copy()
+        with open(COEF_TRAIN_FILE, "w") as outfile:
+            json.dump(coefficients, outfile)
 
 def run_mutate():
     ai = ais[0]
@@ -101,8 +113,8 @@ def run_mutate():
         ai.read_coefficients(COEF_BASE_FILE)
 
     parent = ai.copy_coefficients()
-    ai.mutate_coefficients("Giza_Day", 4)
-    ai.show_mutations("Giza_Day", 4, parent)
+    new_coefs = ai.mutate_coefficients("Giza_Day", 4)
+    ai.show_mutations("Giza_Day", 4, parent, new_coefs)
     # ai.remutate_coefficients("Giza_Day", 4, parent)
 
 
@@ -121,7 +133,7 @@ def run_game(run_index, run_stats):
         if comp > points:
             finish_place += 1
 
-    print(f"{run_index} pts: {points}, finish: {finish_place}")
+    # print(f"{run_index} pts: {points}, finish: {finish_place}")
 
     if run_stats:
         run_stats.run_count += 1
@@ -131,7 +143,49 @@ def run_game(run_index, run_stats):
             run_stats.victories += 1
 
 
+def perform_run():
+    rs = RunStats()
+    for run_index in range(0, num_games_per_run):
+        run_game(run_index, rs)
+        time.sleep(0.2)  # keep from overheating
+
+    return rs
+
+
+# we assume run_counts are the same so we don't have to do all the averaging math
+def was_run_better(rs, last_rs):
+    if rs.victories > last_rs.victories:
+        return True
+    elif rs.victories == last_rs.victories:
+        if rs.finish_sum < last_rs.finish_sum:
+            return True
+        elif rs.finish_sum == last_rs.finish_sum:
+            if rs.points_sum > last_rs.points_sum:
+                return True
+
+    return False
+
+
+def show_training_results():
+    ai = ais[0]
+    baseline = ai.copy_coefficients()
+    if os.path.isfile(COEF_TRAIN_FILE):
+        ai.read_coefficients(COEF_TRAIN_FILE)
+    elif os.path.isfile(COEF_BASE_FILE):
+        ai.read_coefficients(COEF_BASE_FILE)
+
+    nowline = ai.copy_coefficients()
+
+    # ai.show_all_mutations(baseline, nowline)
+    ai.show_all_mutation_generations(nowline)
+
+
 def run_training():
+    while True:
+        run_training_on_board()
+
+
+def run_training_on_board():
     if os.path.isfile(COEF_BASE_FILE):
         print(f"Loading {COEF_BASE_FILE} as starting generation")
         for ai_init in ais:
@@ -140,17 +194,48 @@ def run_training():
         print(f"Loading {COEF_TRAIN_FILE} as training generation")
         ais[0].read_coefficients(COEF_TRAIN_FILE)
 
-    # outer loop picks new cards and new wonders to keep it fresh
-    while True:
-        prepare_for_run()
-        rs = RunStats()
-        start = time.perf_counter()
-        for run_index in range(0, num_games_per_run):
-            run_game(run_index, rs)
-            time.sleep(0.0005)  # keep from overheating
+    last_run_stats = None
+    last_run_coefficients = None
+    mutations_to_try = []
 
-    print(rs)
-    print(time.perf_counter() - start, " time")
+    create_wonders_and_hands()
+    board_name = f"{wonders[0].name}_{wonders[0].side}"
+
+    print(f"Training {player_count} players on ({','.join([f'{m.name}_{m.side}' for m in wonders])})")
+    iteration = 0
+
+    # outer loop picks new cards and new wonders to keep it fresh
+    while iteration < 50:
+        rs = perform_run()
+
+        if not last_run_stats:
+            last_run_stats = rs
+            last_run_coefficients = ais[0].copy_coefficients()
+            mutations_to_try.append(ais[0].mutate_coefficients(board_name, player_count))
+            mutations_to_try.append(ais[0].mutate_coefficients_huge(board_name, player_count))
+            print(f"[{time.strftime('%H:%M:%S')}-{iteration}] Baseline set, rs({rs})")
+        elif was_run_better(rs, last_run_stats):
+            last_run_stats = rs
+            last_run_coefficients = ais[0].copy_coefficients()
+            ais[0].write_coefficients(COEF_TRAIN_FILE)
+            print(f"[{time.strftime('%H:%M:%S')}-{iteration}] New alpha found, rs({rs})")
+            mutations_to_try.append(ais[0].mutate_coefficients(board_name, player_count))  # random mutation
+            mutations_to_try.append(ais[0].mutate_coefficients_huge(board_name, player_count))  # random mutation
+            mutations_to_try.append(ais[0].remutate_coefficients(board_name, player_count, last_run_coefficients))  # mutate similar to original mutation
+            mutations_to_try.append(last_run_coefficients)  # give the original a second shot as well
+        else:
+            print(f"[{time.strftime('%H:%M:%S')}-{iteration}] still looking, rs({rs}), lrs({last_run_stats})")
+
+        if len(mutations_to_try) == 0:
+            mutations_to_try.append(ais[0].mutate_coefficients(board_name, player_count))
+            mutations_to_try.append(ais[0].mutate_coefficients_huge(board_name, player_count))
+
+        new_coefs = mutations_to_try.pop(0)
+        ais[0].restore_coefficients(new_coefs)
+
+        iteration += 1
+        time.sleep(2)  # keep from overheating
+
 
 
 

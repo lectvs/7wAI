@@ -33,9 +33,10 @@ class RunStats:
 CRED = '\033[91m'
 CEND = '\033[0m'
 
-ais = [ScottAi(), ScottAi(), ScottAi(), ScottAi(), ScottAi()]
+ais = [ScottAi(), ScottAi(), ScottAi()]
 num_deck_sets_to_use = 50
 num_games_per_run = 50
+all_wonders = get_all_wonders()
 
 player_count = len(ais)
 wonders = []
@@ -44,16 +45,39 @@ deck_sets = []
 if len(sys.argv) == 1:
     print("Usage: python local_ai_trainer.py cmd")
     print("where cmd is one of the following:")
-    print(f"  make_base_coef - makes the {COEF_BASE_FILE} file with starting coefficients")
+    print(f"  train - uses the {COEF_TRAIN_FILE} file to start training")
+    print(f"  show_training_results - shows the progress of the training")
     exit(0)
+
+
+def run_command():
+    cmd = sys.argv[1]
+    if cmd == 'promote_coefs':
+        promote_coefs()
+    elif cmd == 'mutate':
+        run_mutate()
+    elif cmd == 'show_training_results':
+        show_training_results()
+    elif cmd == 'show_coefficients':
+        show_coefficients()
+    elif cmd == 'train':
+        run_training()
+
 
 def create_wonders_and_hands():
     global wonders, deck_sets
-    wonders = get_random_wonders(player_count)
+    wonders.clear()
+
+    for i in range(0, player_count):
+        wonders.append(all_wonders[i])
+
+    # rotate to train next set
+    all_wonders.append(all_wonders.pop(0))
     # to train a specific wonder:
-    # GIZA_DAY, GIZA_NIGHT,EPHESOS_DAY, EPHESOS_NIGHT,RHODOS_DAY, RHODOS_NIGHT,ALEXANDRIA_DAY, ALEXANDRIA_NIGHT
-    # OLYMPIA_DAY, OLYMPIA_NIGHT,BABYLON_DAY, BABYLON_NIGHT,HALIKARNASSOS_DAY, HALIKARNASSOS_NIGHT
-    # wonders[0] = EPHESOS_DAY()  # choice([OLYMPIA_NIGHT(), EPHESOS_DAY(), OLYMPIA_DAY(), RHODOS_DAY()])
+    # wonders = [EPHESOS_DAY(), OLYMPIA_NIGHT(), RHODOS_DAY()])
+    #     GIZA_DAY, GIZA_NIGHT, EPHESOS_DAY, EPHESOS_NIGHT,RHODOS_DAY, RHODOS_NIGHT, ALEXANDRIA_DAY, ALEXANDRIA_NIGHT
+    #     OLYMPIA_DAY, OLYMPIA_NIGHT, BABYLON_DAY, BABYLON_NIGHT, HALIKARNASSOS_DAY, HALIKARNASSOS_NIGHT
+    wonders[0] = BABYLON_NIGHT()
 
     deck_sets = []
     for i in range(num_deck_sets_to_use):
@@ -79,18 +103,6 @@ def build_starting_hands(run_index):
         2: [deck_set.deck2[7 * i:7 * (i + 1)] for i in range(player_count)],
         3: [deck_set.deck3[7 * i:7 * (i + 1)] for i in range(player_count)],
     }
-
-
-def run_command():
-    cmd = sys.argv[1]
-    if cmd == 'promote_coefs':
-        promote_coefs()
-    elif cmd == 'mutate':
-        run_mutate()
-    elif cmd == 'show_training_results':
-        show_training_results()
-    elif cmd == 'train':
-        run_training()
 
 
 def promote_coefs():
@@ -180,6 +192,50 @@ def show_training_results():
     ai.show_all_mutation_generations(nowline)
 
 
+def extract_coef_values(board, key):
+    vals = []
+    for pc in range(3,6):
+        pc_vals = []
+        for age in range(0,3):
+            val = board[f"player_{pc}"][age][key]
+            if key == 'generation':
+                pc_vals.append(f"{val}".ljust(5))
+            elif val < 0:
+                pc_vals.append("{:.2f}".format(val))
+            else:
+                pc_vals.append("{:.3f}".format(val))
+        vals.append(pc_vals)
+    return vals
+
+
+def show_coefficients():
+    ai = ais[0]
+    if os.path.isfile(COEF_TRAIN_FILE):
+        ai.read_coefficients(COEF_TRAIN_FILE)
+    elif os.path.isfile(COEF_BASE_FILE):
+        ai.read_coefficients(COEF_BASE_FILE)
+
+    nowline = ai.copy_coefficients()
+    def_values = nowline["#default"]
+    coef_keys = [k for i, (k, v) in enumerate(def_values["player_3"][0].items())]
+
+    # path looks like #default.player_3[age_no].science_w
+    for i, (board_name, v) in enumerate(nowline.items()):
+        if board_name != '#default':
+            board_coefs = nowline[board_name]
+            print(f"\n\n{board_name} coefficients")
+            print(f"                                3 players            4 players            5+ players   ")
+            print(f"                             age1  age2  age3     age1  age2  age3     age1  age2  age3")
+
+            for key in coef_keys:
+                all_coefs = extract_coef_values(board_coefs, key)
+                all_p3_coefs = all_coefs[0]
+                all_p4_coefs = all_coefs[1]
+                all_p5_coefs = all_coefs[2]
+                line = f"    {key.ljust(24)} {' '.join(all_p3_coefs)}    {' '.join(all_p4_coefs)}    {' '.join(all_p5_coefs)}"
+                print(line)
+
+
 def run_training():
     while True:
         run_training_on_board()
@@ -235,10 +291,6 @@ def run_training_on_board():
 
         iteration += 1
         time.sleep(2)  # keep from overheating
-
-
-
-
 
 
 run_command()

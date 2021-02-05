@@ -103,10 +103,21 @@ ALL_WONDERS = [
     [HALIKARNASSOS_DAY, HALIKARNASSOS_NIGHT]
 ]
 
+
 # Returns a random sample of Wonders with random sides.
 def get_random_wonders(num):
     wonders = sample(ALL_WONDERS, num)
     return [wonder[randint(0, 1)]() for wonder in wonders]
+
+
+def get_all_wonders():
+    res = []
+    for wonder in ALL_WONDERS:
+        res.append(wonder[0]())
+    for wonder in ALL_WONDERS:
+        res.append(wonder[1]())
+    return res
+
 
 # Returns the wonder factory for the given BGA wonder name and side.
 def get_wonder_by_bga_name_side(name, side):

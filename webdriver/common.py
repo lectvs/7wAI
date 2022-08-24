@@ -5,6 +5,7 @@ from game.deck import *
 from game.wonders import *
 from time import sleep
 from collections import namedtuple
+from selenium.webdriver.common.by import By
 
 # Represents a player on BGA.
 # - id: the numeric id of the player
@@ -36,22 +37,22 @@ class GameInfo:
 def log_in(driver, user, pw):
     driver.get('https://boardgamearena.com/')
 
-    driver.find_element_by_id('connect_button').click()
-    driver.find_element_by_id('username_input').send_keys(user)
-    driver.find_element_by_id('password_input').send_keys(pw)
-    driver.find_element_by_id('submit_login_button').click()
+    driver.find_element(By.CSS_SELECTOR, 'a[href="/account"]').click()
+    driver.find_element(By.ID, 'username_input').send_keys(user)
+    driver.find_element(By.ID, 'password_input').send_keys(pw)
+    driver.find_element(By.ID, 'submit_login_button').click()
 
-    while driver.current_url != 'https://boardgamearena.com/':
+    while driver.current_url not in ['https://boardgamearena.com/', 'https://boardgamearena.com/welcome']:
         sleep(1)
 
 # Attempt to rejoin a game in progress if applicable.
 def attempt_rejoin(driver):
-    banner_links = driver.find_elements_by_css_selector('#current_table_banner a')
+    banner_links = driver.find_elements(By.CSS_SELECTOR, '#current_table_banner a')
     if not banner_links or banner_links[0].text != '7 Wonders':
         return
     banner_links[0].click()
     sleep(1)
-    go_to_link = driver.find_element_by_id('access_game_normal')
+    go_to_link = driver.find_element(By.ID, 'access_game_normal')
     if not go_to_link:
         return
     go_to_link.click()
@@ -59,11 +60,11 @@ def attempt_rejoin(driver):
 # Go to and start a replay for the given table id, from the perspective of the given player_id.
 def go_to_replay(driver, table_id, player_id):
     driver.get(f'https://en.boardgamearena.com/gamereview?table={table_id}')
-    driver.find_element_by_id(f'choosePlayerLink_{player_id}').click()
+    driver.find_element(By.ID, f'choosePlayerLink_{player_id}').click()
 
     sleep(1)
-    while 'You must choose a card to play' not in driver.find_element_by_id('pagemaintitletext').text:
-        driver.find_element_by_id('archive_next').click()
+    while 'You must choose a card to play' not in driver.find_element(By.ID, 'pagemaintitletext').text:
+        driver.find_element(By.ID, 'archive_next').click()
         sleep(0.5)
 
 # Go to the given table id.
@@ -73,20 +74,20 @@ def go_to_table(driver, table_id):
 # Accept an invite to a game if applicable.
 def accept_invite(driver):
     driver.get('https://boardgamearena.com/')
-    for e in driver.find_elements_by_css_selector('#expected_table_banners a'):
+    for e in driver.find_elements(By.CSS_SELECTOR, '#expected_table_banners a'):
         if e.text == 'Accept':
             e.click()
             return
 
 # Start the game as the host of a table.
 def start_game(driver):
-    while not driver.find_element_by_id('startgame').text.strip():
+    while not driver.find_element(By.ID, 'startgame').text.strip():
         sleep(0.1)
-    driver.find_element_by_id('startgame').click()
+    driver.find_element(By.ID, 'startgame').click()
 
 # Toggle sound off while in-game.
 def toggle_sound(driver):
-    driver.find_element_by_id('toggleSound').click()
+    driver.find_element(By.ID, 'toggleSound').click()
 
 # Fetches all info in a GameInfo object from the BGA game.
 def get_game_info(driver):
@@ -112,7 +113,7 @@ PLAY_DISCARD = 'play_discard'
 def get_game_state(driver):
     if driver.execute_script('return gameui.gamedatas.gamestate.name') == 'gameEnd':
         return DONE
-    title = driver.find_element_by_id('pagemaintitletext').text
+    title = driver.find_element(By.ID, 'pagemaintitletext').text
     if 'You must choose a side of your Wonder board' in title:
         return CHOOSE_SIDE
     if 'You must choose a card to play' in title:
@@ -155,24 +156,24 @@ def set_age(driver, game_info, wonders):
 # Choose the wonder side.
 def choose_side(driver, pid, side):
         side = {'Day': 'a', 'Night': 'b'}[side]
-        driver.find_element_by_id(f'wonder_face_{pid}_{side}').click()
+        driver.find_element(By.ID, f'wonder_face_{pid}_{side}').click()
 
 # Reads the Wonders from BGA along with everything associated with them (military tokens, played cards, etc.)
 def get_wonders(driver, game_info):
-    board_elements = [driver.find_element_by_id(f'player_board_wrap_{p.id}') for p in game_info.players]
+    board_elements = [driver.find_element(By.ID, f'player_board_wrap_{p.id}') for p in game_info.players]
     military_tokens_data = driver.execute_script('let res = {}; for (let key in gameui.victoryStock) { res[key] = gameui.victoryStock[key].items.map(i => parseInt(i.type)) }; return res')
     wonders = [None for player in game_info.players]
     for i in range(len(game_info.players)):
         e, player = board_elements[i], game_info.players[i]
         wonder = game_info.wonders_by_id[player.wonder]()
-        wonder.gold = int(e.find_element_by_id(f'coin_{player.id}').text)
-        for card_element in e.find_elements_by_css_selector(f'#player_board_content_{player.id} [id^=board_item_wrap_]'):
+        wonder.gold = int(e.find_element(By.ID, f'coin_{player.id}').text)
+        for card_element in e.find_elements(By.CSS_SELECTOR, f'#player_board_content_{player.id} [id^=board_item_wrap_]'):
             m = re.match(r'.*type_([0-9]+).*', card_element.get_attribute('class'))
             if not m:
                 raise Exception('Failed to parse card')
             card = game_info.cards_by_id[m.group(1)]
             wonder.played_cards.append(card)
-        wonder.stages_built = len(e.find_elements_by_css_selector(f'#wonder_step_built_{player.id} > div'))
+        wonder.stages_built = len(e.find_elements(By.CSS_SELECTOR, f'#wonder_step_built_{player.id} > div'))
         wonder.military_tokens = military_tokens_data[player.id]
         wonders[i] = wonder
     
@@ -180,7 +181,7 @@ def get_wonders(driver, game_info):
 
 # Read the current hand.
 def read_hand(driver, game_info):
-    card_elements = driver.find_elements_by_css_selector('#player_hand > div > div')
+    card_elements = driver.find_elements(By.CSS_SELECTOR, '#player_hand > div > div')
     cards = []
     for e in card_elements:
         m = re.match(r'.*type_([0-9]+).*', e.get_attribute('class'))
@@ -192,7 +193,7 @@ def read_hand(driver, game_info):
 
 # Read the current discard pile.
 def read_discard(driver, game_info):
-    card_elements = driver.find_elements_by_css_selector('#discarded > [id^=discarded_item_]')
+    card_elements = driver.find_elements(By.CSS_SELECTOR, '#discarded > [id^=discarded_item_]')
     cards = []
     for e in card_elements:
         discard_id = e.get_attribute('id').split('_')[-1]
@@ -208,7 +209,7 @@ def read_discard(driver, game_info):
 # Read the last move for each player from the game logs (logs must be visible for reading to succeed).
 def read_last_move(driver, game_info):
     move = [None for player in game_info.players]
-    logs = [e.text.split('\n')[0].strip() for e in driver.find_elements_by_css_selector('#logs > div[id^=log_]')]
+    logs = [e.text.split('\n')[0].strip() for e in driver.find_elements(By.CSS_SELECTOR, '#logs > div[id^=log_]')]
     for i in range(len(game_info.players)):
         player = game_info.players[i]
         for log in logs:
@@ -238,12 +239,12 @@ def play_selection(driver, game_info, wonders, selection):
     if card_id == "13" and game_info.age == 2: card_id = "34"
     if not card_id:
         raise Exception('Could not find id for selected card')
-    card_element = driver.find_element_by_css_selector(f'.cardcontent.cardtype_{card_id}')
+    card_element = driver.find_element(By.CSS_SELECTOR, f'.cardcontent.cardtype_{card_id}')
     if not card_element:
         raise Exception('Could not find card element for selected card')
     
     if selection.action == 'throw':
-        e = card_element.find_element_by_css_selector('.menulinks > [id^=menudiscard_]')
+        e = card_element.find_element(By.CSS_SELECTOR, '.menulinks > [id^=menudiscard_]')
         driver.execute_script('arguments[0].click()', e)
     else:
         if selection.action == 'play':
@@ -253,21 +254,21 @@ def play_selection(driver, game_info, wonders, selection):
         else:
             raise Exception(f"Action not supported: {selection.action}")
 
-        e = card_element.find_element_by_css_selector(selector)
+        e = card_element.find_element(By.CSS_SELECTOR, selector)
         driver.execute_script('arguments[0].click()', e)
 
         if selection.payment.neg + selection.payment.pos == 0:
             return
 
         sleep(1)
-        payment_list = driver.find_element_by_id('payment_list')
+        payment_list = driver.find_element(By.ID, 'payment_list')
         if not payment_list.text.strip():
             return
 
         payment = selection.payment or Payment(0, 0, 0)
-        for pp in payment_list.find_elements_by_css_selector('#paymentpossibilities > [id^=paymentpossibility_]'):
-            pnegtext = pp.find_element_by_css_selector('.possibilityleft').text
-            ppostext = pp.find_element_by_css_selector('.possibilityright').text
+        for pp in payment_list.find_elements(By.CSS_SELECTOR, '#paymentpossibilities > [id^=paymentpossibility_]'):
+            pnegtext = pp.find_element(By.CSS_SELECTOR, '.possibilityleft').text
+            ppostext = pp.find_element(By.CSS_SELECTOR, '.possibilityright').text
             pneg = 0
             ppos = 0
             m = re.match(r'^← ([0-9]+) to .+$', pnegtext)
@@ -275,7 +276,7 @@ def play_selection(driver, game_info, wonders, selection):
             m = re.match(r'^to .+ ([0-9]+) →$', ppostext)
             ppos = int(m.group(1)) if m else 0
             if payment.neg == pneg and payment.pos == ppos:
-                button = pp.find_element_by_css_selector('.possibilitybutton > a')
+                button = pp.find_element(By.CSS_SELECTOR, '.possibilitybutton > a')
                 driver.execute_script('arguments[0].click()', button)
                 return
         
@@ -284,12 +285,12 @@ def play_selection(driver, game_info, wonders, selection):
 # Play the given Card from the discard on BGA.
 def play_from_discard(driver, game_info, card):
     if not card:
-        driver.find_element_by_id('dontpick').click()
+        driver.find_element(By.ID, 'dontpick').click()
         return
     card_info = next((info for info in read_discard(driver, game_info) if info.card == card), None)
     if not card_info:
         raise Exception(f'Could not find card {card.name} in the discard')
-    card_element = driver.find_element_by_css_selector(f'#discarded > [id^=discarded_item_{card_info.discard_id}]')
+    card_element = driver.find_element(By.CSS_SELECTOR, f'#discarded > [id^=discarded_item_{card_info.discard_id}]')
     if not card_element:
         raise Exception('Could not find discard card element for selected card')
     card_element.click()
